@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -318,11 +318,16 @@ async fn run_app<B: ratatui::backend::Backend>(
             f.render_widget(footer, chunks[2]);
         })?;
 
-        // Handle input
+        // Handle input - nur auf Press reagieren (nicht Release)
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
+                // Ignoriere Release-Events (Windows sendet Press + Release)
+                if key.kind != KeyEventKind::Press {
+                    continue;
+                }
+
                 match key.code {
-                    KeyCode::Char('q') => return Ok(()),
+                    KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                     KeyCode::Down | KeyCode::Char('j') => {
                         app.selected_panel = match app.selected_panel {
                             SelectedPanel::Ssh => SelectedPanel::Docker,
@@ -338,6 +343,10 @@ async fn run_app<B: ratatui::backend::Backend>(
                             SelectedPanel::Coolify => SelectedPanel::Docker,
                             SelectedPanel::Git => SelectedPanel::Coolify,
                         };
+                    }
+                    KeyCode::Enter => {
+                        // TODO: Detail-Ansicht oder Aktionen für ausgewähltes Panel
+                        // Für jetzt: nichts tun, später erweitern
                     }
                     _ => {}
                 }
