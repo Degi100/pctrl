@@ -41,6 +41,8 @@ coolify_instances:
   - id: "main-coolify"
     name: "Main Coolify Instance"
     url: "https://coolify.example.com"
+    # WARNING: Do not store actual API keys in configuration files.
+    # Use environment variables or a secure credential manager instead.
     api_key: "your-api-key-here"
 
 # Git Repositories

@@ -56,11 +56,18 @@ impl GitManager {
                     .unwrap_or("")
                     .to_string();
 
+                // TODO: Extract date from commit or tag object
+                let date = tag
+                    .as_ref()
+                    .map(|t| t.tagger())
+                    .and_then(|s| s.map(|sig| sig.when().seconds().to_string()))
+                    .unwrap_or_default();
+
                 releases.push(Release {
                     name: tag_name.to_string(),
                     tag: tag_name.to_string(),
                     message,
-                    date: String::new(), // Would need to extract from commit
+                    date,
                 });
             }
         }

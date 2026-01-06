@@ -24,8 +24,10 @@ impl Database {
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         let (cipher, salt) = if let Some(pwd) = password {
-            // In production, the salt should be stored securely and retrieved
-            // For now, we use a fixed salt derived from the database path
+            // TODO: In production, the salt should be randomly generated during
+            // database creation and stored in a metadata table, then retrieved on
+            // subsequent opens. For now, we use a deterministic salt for simplicity.
+            // This allows the same password to consistently decrypt the database.
             let salt_string = format!("pctrl-salt-{}", path);
             let salt_bytes = salt_string.as_bytes();
             let mut salt = [0u8; 16];
@@ -136,8 +138,10 @@ impl Database {
     /// Returns nonce (12 bytes) prepended to ciphertext
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         if let Some(cipher) = &self.cipher {
-            // Generate a random nonce for this encryption operation
-            let nonce_bytes = rand::random::<[u8; 12]>();
+            use rand::RngCore;
+            // Generate a cryptographically secure random nonce
+            let mut nonce_bytes = [0u8; 12];
+            rand::rngs::OsRng.fill_bytes(&mut nonce_bytes);
             let nonce = Nonce::from_slice(&nonce_bytes);
 
             let ciphertext = cipher

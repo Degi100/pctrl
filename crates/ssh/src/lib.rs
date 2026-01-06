@@ -41,9 +41,10 @@ impl SshManager {
 
         match &conn.auth_method {
             AuthMethod::Password => {
-                // In production, retrieve password securely
+                // TODO: Implement password authentication
+                // In production, retrieve password securely from keychain/credential manager
                 return Err(pctrl_core::Error::Ssh(
-                    "Password authentication not yet implemented".to_string(),
+                    "Password authentication not yet implemented. Please use public key authentication.".to_string(),
                 ));
             }
             AuthMethod::PublicKey { key_path } => {
