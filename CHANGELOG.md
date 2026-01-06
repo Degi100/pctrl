@@ -7,10 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project structure and documentation
+### Planned
+- TUI detail views and interactive actions
+- Desktop GUI functionality
+- Real-time container monitoring
+- SSH password authentication
 
-## [0.1.0] - 2026-01-06
+## [0.1.2] - 2025-01-06
+
+### Added
+- **Full CRUD Commands** for all entities
+  - `pctrl ssh add/remove` - Manage SSH connections
+  - `pctrl docker add/remove/hosts` - Manage Docker hosts
+  - `pctrl coolify add/remove/instances` - Manage Coolify instances
+  - `pctrl git add/remove/repos` - Manage Git repositories
+
+- **Styled CLI Output**
+  - ASCII banner with pctrl logo
+  - Colored status display with indicators (● for active, ○ for empty)
+  - Consistent formatting across all commands
+
+- **Database Persistence**
+  - Full load/save for all entity types (SSH, Docker, Coolify, Git)
+  - Auto-creation of database directory and file
+  - Duplicate ID detection with helpful error messages
+
+- **TUI Improvements**
+  - Fixed navigation on Windows (KeyEventKind filter)
+  - Added ESC key to quit
+  - Enter key handler prepared for future detail views
+
+### Fixed
+- Config loading now includes Docker hosts, Coolify instances, and Git repos
+- Database URL now uses `?mode=rwc` for auto-create
+- TUI no longer skips menu items on Windows due to key repeat
+
+## [0.1.0] - 2025-01-06
 
 ### Added
 - **Core Architecture**

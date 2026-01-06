@@ -6,14 +6,38 @@ import Layout from '../layouts/Layout.astro';
   <main>
     <section class="hero">
       <div class="container">
-        <h1>pctrl</h1>
+        <pre class="ascii-logo">
+  ██████╗  ██████╗████████╗██████╗ ██╗
+  ██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██║
+  ██████╔╝██║        ██║   ██████╔╝██║
+  ██╔═══╝ ██║        ██║   ██╔══██╗██║
+  ██║     ╚██████╗   ██║   ██║  ██║███████╗
+  ╚═╝      ╚═════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝
+        </pre>
         <p class="tagline">Mission Control for Self-Hosters & Indie Devs</p>
         <p class="description">
-          Manage servers, containers, deployments and releases from one place.
+          Manage SSH connections, Docker containers, Coolify deployments and Git releases from one unified interface.
         </p>
         <div class="cta">
-          <a href="#features" class="btn btn-primary">Learn More</a>
+          <a href="#quickstart" class="btn btn-primary">Get Started</a>
           <a href="https://github.com/Degi100/pctrl" class="btn btn-secondary">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart" class="quickstart">
+      <div class="container">
+        <h2>Quick Start</h2>
+        <div class="code-block">
+          <pre><code># Install from source
+git clone https://github.com/Degi100/pctrl.git
+cd pctrl
+cargo install --path apps/cli
+
+# Run pctrl
+pctrl              # Shows styled status banner
+pctrl --help       # List all commands
+pctrl -m tui       # Terminal UI mode</code></pre>
         </div>
       </div>
     </section>
@@ -24,27 +48,56 @@ import Layout from '../layouts/Layout.astro';
         <div class="feature-grid">
           <div class="feature">
             <h3>🔐 SSH Management</h3>
-            <p>Connect to and manage your remote servers securely with SSH key support.</p>
+            <p>Add, remove, connect and execute commands on remote servers with SSH key authentication.</p>
+            <code>pctrl ssh add "Server" 10.0.0.1 -u root</code>
           </div>
           <div class="feature">
             <h3>🐳 Docker Control</h3>
-            <p>Monitor and manage Docker containers across multiple hosts.</p>
+            <p>Manage Docker hosts and containers across multiple machines. List, start, and stop containers.</p>
+            <code>pctrl docker add "Local" -u unix:///var/run/docker.sock</code>
           </div>
           <div class="feature">
             <h3>🚀 Coolify Integration</h3>
-            <p>Deploy and manage applications on your Coolify instances.</p>
+            <p>Deploy and monitor applications on your Coolify instances with API token authentication.</p>
+            <code>pctrl coolify add "Prod" -u https://coolify.io -t token</code>
           </div>
           <div class="feature">
             <h3>📦 Git Releases</h3>
-            <p>Create and manage Git releases for your repositories.</p>
+            <p>Create tags and manage releases for your Git repositories. Push tags to remotes.</p>
+            <code>pctrl git add "Project" -p /path/to/repo</code>
           </div>
           <div class="feature">
             <h3>💻 Three Modes</h3>
-            <p>CLI, TUI, and GUI modes to suit your workflow.</p>
+            <p>Choose your interface: CLI for scripting, TUI for terminal dashboards, GUI for desktop apps.</p>
+            <code>pctrl -m tui | pctrl -m gui</code>
           </div>
           <div class="feature">
             <h3>🔒 Encrypted Storage</h3>
-            <p>Local-first data storage with encryption support.</p>
+            <p>AES-256-GCM encrypted SQLite database with Argon2 key derivation. Your data stays secure.</p>
+            <code>~/.local/share/pctrl/pctrl.db</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="modes" class="modes">
+      <div class="container">
+        <h2>Three Ways to Control</h2>
+        <div class="mode-grid">
+          <div class="mode">
+            <h3>CLI Mode</h3>
+            <p>Fast, scriptable command-line interface with full CRUD operations for all resources.</p>
+            <div class="status complete">✅ Complete</div>
+          </div>
+          <div class="mode">
+            <h3>TUI Mode</h3>
+            <p>Beautiful terminal dashboard with keyboard navigation using ratatui.</p>
+            <div class="status complete">✅ Complete</div>
+          </div>
+          <div class="mode">
+            <h3>GUI Mode</h3>
+            <p>Desktop application built with Tauri and React for a native experience.</p>
+            <div class="status progress">🔄 In Progress</div>
           </div>
         </div>
       </div>
@@ -54,32 +107,44 @@ import Layout from '../layouts/Layout.astro';
       <div class="container">
         <h2>Roadmap</h2>
         <div class="timeline">
-          <div class="milestone">
-            <h3>v0.1.0 - Foundation</h3>
+          <div class="milestone done">
+            <div class="milestone-header">
+              <h3>v0.1.x - Foundation</h3>
+              <span class="badge done">✅ Complete</span>
+            </div>
             <ul>
-              <li>✅ Core architecture</li>
-              <li>✅ CLI interface with clap</li>
-              <li>✅ TUI interface with ratatui</li>
-              <li>✅ GUI with Tauri and React</li>
-              <li>✅ Basic SSH, Docker, Coolify, Git support</li>
+              <li>✅ Core Rust architecture with 6 modular crates</li>
+              <li>✅ CLI with full CRUD for SSH, Docker, Coolify, Git</li>
+              <li>✅ TUI with navigation and real-time data display</li>
+              <li>✅ Encrypted SQLite database persistence</li>
+              <li>✅ Styled CLI output with ASCII banner</li>
+              <li>✅ Cross-platform support (Windows, Linux, macOS)</li>
             </ul>
           </div>
-          <div class="milestone">
-            <h3>v0.2.0 - Enhanced Features</h3>
+          <div class="milestone current">
+            <div class="milestone-header">
+              <h3>v0.2.x - Enhanced Features</h3>
+              <span class="badge progress">🔄 In Progress</span>
+            </div>
             <ul>
-              <li>🔄 Advanced SSH connection management</li>
-              <li>🔄 Real-time container monitoring</li>
-              <li>🔄 Deployment pipelines</li>
-              <li>🔄 Mobile app (Expo)</li>
+              <li>🔄 TUI detail views and interactive actions</li>
+              <li>🔄 Desktop GUI functionality (Tauri + React)</li>
+              <li>⏳ Real-time container monitoring</li>
+              <li>⏳ SSH password authentication</li>
+              <li>⏳ Connection health checks</li>
             </ul>
           </div>
-          <div class="milestone">
-            <h3>v1.0.0 - Production Ready</h3>
+          <div class="milestone future">
+            <div class="milestone-header">
+              <h3>v1.0.0 - Production Ready</h3>
+              <span class="badge future">⏳ Planned</span>
+            </div>
             <ul>
-              <li>⏳ Full test coverage</li>
-              <li>⏳ Documentation</li>
-              <li>⏳ Plugin system</li>
+              <li>⏳ Mobile app (Expo + React Native)</li>
+              <li>⏳ Plugin system for extensibility</li>
               <li>⏳ Cloud sync (optional)</li>
+              <li>⏳ Deployment pipelines</li>
+              <li>⏳ Full documentation and tests</li>
             </ul>
           </div>
         </div>
@@ -91,16 +156,66 @@ import Layout from '../layouts/Layout.astro';
         <h2>Changelog</h2>
         <div class="changes">
           <div class="version">
-            <h3>v0.1.0 <span class="date">2024-01-06</span></h3>
+            <h3>v0.1.2 <span class="date">2025-01-06</span></h3>
+            <ul>
+              <li><strong>Added:</strong> Full CRUD commands for all entities (add/remove)</li>
+              <li><strong>Added:</strong> Styled CLI output with ASCII banner</li>
+              <li><strong>Added:</strong> TUI navigation fix for Windows (KeyEventKind)</li>
+              <li><strong>Added:</strong> Database auto-creation with proper paths</li>
+              <li><strong>Fixed:</strong> Config loading for Docker, Coolify, Git from database</li>
+            </ul>
+          </div>
+          <div class="version">
+            <h3>v0.1.0 <span class="date">2025-01-06</span></h3>
             <ul>
               <li>Initial release</li>
-              <li>CLI, TUI, and GUI interfaces</li>
-              <li>SSH connection management</li>
-              <li>Docker container management</li>
-              <li>Coolify deployment integration</li>
-              <li>Git release management</li>
-              <li>Encrypted SQLite database</li>
+              <li>CLI, TUI, and GUI interface scaffolds</li>
+              <li>SSH connection management with public key auth</li>
+              <li>Docker container management via Bollard API</li>
+              <li>Coolify deployment integration via REST API</li>
+              <li>Git release management with libgit2</li>
+              <li>Encrypted SQLite database with AES-256-GCM</li>
             </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tech" class="tech">
+      <div class="container">
+        <h2>Built With</h2>
+        <div class="tech-grid">
+          <div class="tech-item">
+            <strong>Rust</strong>
+            <span>Core & CLI</span>
+          </div>
+          <div class="tech-item">
+            <strong>Tokio</strong>
+            <span>Async Runtime</span>
+          </div>
+          <div class="tech-item">
+            <strong>clap</strong>
+            <span>CLI Parsing</span>
+          </div>
+          <div class="tech-item">
+            <strong>ratatui</strong>
+            <span>Terminal UI</span>
+          </div>
+          <div class="tech-item">
+            <strong>Tauri</strong>
+            <span>Desktop GUI</span>
+          </div>
+          <div class="tech-item">
+            <strong>React</strong>
+            <span>UI Framework</span>
+          </div>
+          <div class="tech-item">
+            <strong>SQLite</strong>
+            <span>Database</span>
+          </div>
+          <div class="tech-item">
+            <strong>AES-256</strong>
+            <span>Encryption</span>
           </div>
         </div>
       </div>
@@ -108,11 +223,12 @@ import Layout from '../layouts/Layout.astro';
 
     <footer>
       <div class="container">
-        <p>&copy; 2024 pctrl. Open source project.</p>
+        <p>&copy; 2025 pctrl. Open source under MIT License.</p>
         <p>
           <a href="https://github.com/Degi100/pctrl">GitHub</a> •
           <a href="https://github.com/Degi100/pctrl/issues">Issues</a> •
-          <a href="https://github.com/Degi100/pctrl/blob/main/LICENSE">License</a>
+          <a href="https://github.com/Degi100/pctrl/blob/main/LICENSE">License</a> •
+          <a href="https://github.com/Degi100/pctrl/blob/main/QUICKSTART.md">Documentation</a>
         </p>
       </div>
     </footer>
@@ -127,14 +243,23 @@ import Layout from '../layouts/Layout.astro';
   .hero {
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     color: white;
-    padding: 6rem 0;
+    padding: 4rem 0;
     text-align: center;
   }
 
-  .hero h1 {
-    font-size: 4rem;
+  .ascii-logo {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.7rem;
+    line-height: 1.2;
     margin-bottom: 1rem;
-    font-weight: 700;
+    white-space: pre;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+
+  @media (min-width: 768px) {
+    .ascii-logo {
+      font-size: 1rem;
+    }
   }
 
   .tagline {
@@ -147,6 +272,9 @@ import Layout from '../layouts/Layout.astro';
     font-size: 1.2rem;
     margin-bottom: 2rem;
     opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .cta {
@@ -190,6 +318,36 @@ import Layout from '../layouts/Layout.astro';
     color: var(--dark);
   }
 
+  /* Quick Start */
+  .quickstart {
+    background: var(--dark);
+    color: white;
+  }
+
+  .quickstart h2 {
+    color: white;
+  }
+
+  .code-block {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 2rem;
+    overflow-x: auto;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .code-block pre {
+    margin: 0;
+  }
+
+  .code-block code {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.95rem;
+    color: #a8ff60;
+  }
+
+  /* Features */
   .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -209,39 +367,151 @@ import Layout from '../layouts/Layout.astro';
     color: var(--primary);
   }
 
-  .roadmap {
+  .feature p {
+    margin-bottom: 1rem;
+    color: #666;
+  }
+
+  .feature code {
+    display: block;
+    background: #f5f5f5;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--primary);
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* Modes */
+  .modes {
     background: var(--light);
+  }
+
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .mode {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+
+  .mode h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+  }
+
+  .status {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: inline-block;
+  }
+
+  .status.complete {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .status.progress {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  /* Roadmap */
+  .roadmap {
+    background: white;
   }
 
   .timeline {
     display: grid;
     gap: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .milestone {
-    background: white;
+    background: var(--light);
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #ccc;
+  }
+
+  .milestone.done {
+    border-left-color: #28a745;
+  }
+
+  .milestone.current {
+    border-left-color: var(--primary);
+  }
+
+  .milestone.future {
+    border-left-color: #6c757d;
+  }
+
+  .milestone-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .milestone h3 {
+    color: var(--dark);
+    margin: 0;
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+  }
+
+  .badge.done {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .badge.progress {
+    background: #e7d4f8;
     color: var(--primary);
-    margin-bottom: 1rem;
+  }
+
+  .badge.future {
+    background: #e9ecef;
+    color: #6c757d;
   }
 
   .milestone ul {
     list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .milestone li {
-    padding: 0.5rem 0;
-    padding-left: 1.5rem;
+    padding: 0.4rem 0;
+  }
+
+  /* Changelog */
+  .changelog {
+    background: var(--light);
   }
 
   .changes {
     max-width: 800px;
     margin: 0 auto;
+    display: grid;
+    gap: 1.5rem;
   }
 
   .version {
@@ -267,10 +537,12 @@ import Layout from '../layouts/Layout.astro';
 
   .version ul {
     list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .version li {
-    padding: 0.5rem 0;
+    padding: 0.4rem 0;
     padding-left: 1.5rem;
     position: relative;
   }
@@ -282,6 +554,38 @@ import Layout from '../layouts/Layout.astro';
     color: var(--primary);
   }
 
+  /* Tech Stack */
+  .tech {
+    background: white;
+  }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .tech-item {
+    background: var(--light);
+    padding: 1.5rem 1rem;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .tech-item strong {
+    display: block;
+    color: var(--primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .tech-item span {
+    font-size: 0.85rem;
+    color: #666;
+  }
+
+  /* Footer */
   footer {
     background: var(--dark);
     color: white;

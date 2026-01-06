@@ -5,191 +5,248 @@ Get up and running with pctrl in minutes!
 ## Prerequisites
 
 - **Rust** 1.70 or higher ([install](https://rustup.rs/))
-- **Node.js** 18 or higher ([install](https://nodejs.org/))
-- **Git** for version control
+- **Node.js** 18 or higher (for desktop/mobile apps)
 
 ## Installation
 
-### Option 1: From Source
-
 ```bash
-# Clone the repository
+# Clone and install
 git clone https://github.com/Degi100/pctrl.git
 cd pctrl
+cargo install --path apps/cli
 
-# Build the CLI
-cargo build -p pctrl-cli --release
-
-# The binary will be at target/release/pctrl
-```
-
-### Option 2: Install from Cargo (coming soon)
-
-```bash
-cargo install pctrl-cli
+# Verify installation
+pctrl --version
 ```
 
 ## First Run
 
+```bash
+# Show the status dashboard
+pctrl
+
+# Show all available commands
+pctrl --help
+```
+
+You'll see the styled pctrl banner with your current configuration status.
+
+## Three Modes
+
 ### CLI Mode (Default)
 
-```bash
-# Show help
-cargo run -p pctrl-cli -- --help
-
-# List SSH connections
-cargo run -p pctrl-cli -- ssh list
-
-# List Docker containers
-cargo run -p pctrl-cli -- docker list <host-id>
-```
-
-### TUI Mode (Terminal UI)
+Fast, scriptable command-line interface:
 
 ```bash
-cargo run -p pctrl-cli -- --mode tui
+pctrl ssh list
+pctrl docker hosts
+pctrl --help
 ```
 
-Use arrow keys to navigate and 'q' to quit.
+### TUI Mode (Terminal Dashboard)
+
+Beautiful terminal UI with keyboard navigation:
+
+```bash
+pctrl -m tui
+
+# Navigation:
+# ↑/↓ or j/k  - Move between items
+# Enter       - Select (coming soon)
+# q or Esc    - Quit
+```
 
 ### GUI Mode (Desktop App)
+
+Native desktop application:
 
 ```bash
 cd apps/desktop
 npm install
-npm run tauri:dev
+npm run tauri dev
 ```
 
-## Configuration
+## Adding Your First Resources
 
-Create a configuration file at `~/.config/pctrl/config.yml`:
-
-```yaml
-database:
-  path: "~/.config/pctrl/pctrl.db"
-  encryption_enabled: true
-
-ssh_connections:
-  - id: "my-server"
-    name: "My Server"
-    host: "example.com"
-    port: 22
-    username: "user"
-    auth_method:
-      type: "public_key"
-      key_path: "~/.ssh/id_rsa"
-```
-
-See `config.example.yml` for more examples.
-
-## Common Tasks
-
-### Managing SSH Connections
+### SSH Connection
 
 ```bash
-# List all connections
+# Add a server
+pctrl ssh add "Production" 10.0.0.1 -u root -p 22
+
+# With custom key
+pctrl ssh add "Staging" 10.0.0.2 -u deploy -k ~/.ssh/staging_key
+
+# List connections
 pctrl ssh list
 
-# Execute a command
-pctrl ssh exec my-server "uptime"
+# Test connection
+pctrl ssh exec production "hostname"
 ```
 
-### Managing Docker Containers
+### Docker Host
 
 ```bash
-# List containers on a host
-pctrl docker list local-docker
+# Add local Docker
+pctrl docker add "Local"
 
-# Start a container
-pctrl docker start local-docker container-id
+# Add remote Docker host
+pctrl docker add "Remote Server" -u tcp://10.0.0.1:2375
 
-# Stop a container
-pctrl docker stop local-docker container-id
+# List hosts
+pctrl docker hosts
+
+# List containers
+pctrl docker list local
 ```
 
-### Managing Git Releases
+### Coolify Instance
 
 ```bash
-# List releases in a repository
-pctrl git list my-repo
+# Add Coolify instance
+pctrl coolify add "Production" -u https://coolify.example.com -t your-api-token
 
-# Create a new release
-pctrl git create my-repo v1.0.0 "Release version 1.0.0"
+# List instances
+pctrl coolify instances
 
-# Push tags to remote
-pctrl git push my-repo
-```
-
-### Managing Coolify Deployments
-
-```bash
 # List deployments
-pctrl coolify list my-instance
-
-# Deploy a project
-pctrl coolify deploy my-instance project-id
+pctrl coolify list production
 ```
 
-## Development
-
-### Running Tests
+### Git Repository
 
 ```bash
-cargo test
+# Add a repository
+pctrl git add "My Project" -p /path/to/repo
+
+# List repos
+pctrl git repos
+
+# List releases/tags
+pctrl git list my-project
+
+# Create a release
+pctrl git create my-project v1.0.0 "First release"
 ```
 
-### Building for Production
+## Database
+
+Your data is stored in an encrypted SQLite database:
+
+| Platform | Location |
+|----------|----------|
+| Linux/macOS | `~/.local/share/pctrl/pctrl.db` |
+| Windows | `%LOCALAPPDATA%\pctrl\pctrl.db` |
+
+### Custom Database Path
 
 ```bash
-# CLI
-cargo build -p pctrl-cli --release
+pctrl --db /custom/path/pctrl.db ssh list
+```
 
-# Desktop App
-cd apps/desktop
-npm run tauri:build
+### Reset Database
 
-# Landing Page
-cd apps/landing
-npm run build
+```bash
+# Linux/macOS
+rm ~/.local/share/pctrl/pctrl.db
+
+# Windows
+del %LOCALAPPDATA%\pctrl\pctrl.db
+```
+
+## Command Reference
+
+### SSH Commands
+
+```bash
+pctrl ssh list                    # List all connections
+pctrl ssh add <name> <host> -u <user> [-p <port>] [-k <key>]
+pctrl ssh remove <id>             # Remove a connection
+pctrl ssh connect <id>            # Connect to host
+pctrl ssh exec <id> "<command>"   # Execute command
+```
+
+### Docker Commands
+
+```bash
+pctrl docker hosts                # List configured hosts
+pctrl docker add <name> [-u <url>]
+pctrl docker remove <id>          # Remove a host
+pctrl docker list <host-id>       # List containers
+pctrl docker start <host-id> <container-id>
+pctrl docker stop <host-id> <container-id>
+```
+
+### Coolify Commands
+
+```bash
+pctrl coolify instances           # List instances
+pctrl coolify add <name> -u <url> -t <token>
+pctrl coolify remove <id>         # Remove instance
+pctrl coolify list <instance-id>  # List deployments
+pctrl coolify deploy <instance-id> <project-id>
+```
+
+### Git Commands
+
+```bash
+pctrl git repos                   # List repositories
+pctrl git add <name> -p <path>
+pctrl git remove <id>             # Remove repository
+pctrl git list <repo-id>          # List releases/tags
+pctrl git create <repo-id> <tag> <message>
+pctrl git push <repo-id>          # Push tags to remote
 ```
 
 ## Troubleshooting
 
-### "Command not found: pctrl"
+### "pctrl: command not found"
 
-Make sure the binary is in your PATH:
+Add Cargo bin to your PATH:
 
 ```bash
+# Add to ~/.bashrc or ~/.zshrc
 export PATH="$PATH:$HOME/.cargo/bin"
 ```
 
-### Database Errors
+### SSH Connection Errors
 
-If you encounter database errors, try removing the database file:
+1. Check your SSH key is loaded:
+   ```bash
+   ssh-add -l
+   ssh-add ~/.ssh/id_rsa
+   ```
+
+2. Verify the connection works with standard SSH:
+   ```bash
+   ssh user@host
+   ```
+
+### Docker Connection Errors
+
+1. Check Docker is running
+2. For remote hosts, ensure the Docker API is exposed
+3. Verify the URL format: `unix:///var/run/docker.sock` or `tcp://host:2375`
+
+### Database Locked
+
+If you see "database locked" errors, ensure only one pctrl instance is running.
+
+## Development
 
 ```bash
-rm ~/.config/pctrl/pctrl.db
+# Build debug version
+cargo build -p pctrl-cli
+
+# Run directly
+cargo run -p pctrl-cli -- ssh list
+
+# Run tests
+cargo test
 ```
-
-The database will be recreated on next run.
-
-### SSH Connection Issues
-
-Ensure your SSH keys are properly configured:
-
-```bash
-ssh-add ~/.ssh/id_rsa
-```
-
-## Next Steps
-
-- Read the [full documentation](https://github.com/Degi100/pctrl/wiki)
-- Check out [examples](https://github.com/Degi100/pctrl/tree/main/examples)
-- Join the [community discussions](https://github.com/Degi100/pctrl/discussions)
 
 ## Getting Help
 
-- 📖 [Documentation](https://github.com/Degi100/pctrl/wiki)
-- 💬 [Discussions](https://github.com/Degi100/pctrl/discussions)
-- 🐛 [Issue Tracker](https://github.com/Degi100/pctrl/issues)
-- 📧 [Contact](https://github.com/Degi100)
+- [GitHub Issues](https://github.com/Degi100/pctrl/issues)
+- [README](README.md)
+- [Architecture](ARCHITECTURE.md)
