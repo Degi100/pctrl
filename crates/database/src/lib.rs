@@ -2,11 +2,10 @@ use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
 };
+use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
-use argon2::password_hash::{PasswordHash, SaltString};
 use pctrl_core::{Config, Result};
 use sqlx::{sqlite::SqlitePool, Row};
-use std::path::Path;
 
 /// Database manager with encryption support
 pub struct Database {
@@ -100,7 +99,7 @@ impl Database {
     fn derive_key(password: &str) -> Result<[u8; 32]> {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
-        
+
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| pctrl_core::Error::Database(format!("Key derivation failed: {}", e)))?;
@@ -144,7 +143,7 @@ impl Database {
         for conn in &config.ssh_connections {
             let auth_method = serde_json::to_string(&conn.auth_method)
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
-            
+
             sqlx::query(
                 "INSERT OR REPLACE INTO ssh_connections (id, name, host, port, username, auth_method) 
                  VALUES (?, ?, ?, ?, ?, ?)"
@@ -168,10 +167,11 @@ impl Database {
         let mut config = Config::default();
 
         // Load SSH connections
-        let rows = sqlx::query("SELECT id, name, host, port, username, auth_method FROM ssh_connections")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+        let rows =
+            sqlx::query("SELECT id, name, host, port, username, auth_method FROM ssh_connections")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         for row in rows {
             let auth_method: String = row.get("auth_method");

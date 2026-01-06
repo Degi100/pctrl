@@ -1,4 +1,4 @@
-use git2::{Repository, Tag};
+use git2::Repository;
 use pctrl_core::{GitRepo, Result};
 use serde::{Deserialize, Serialize};
 
@@ -69,12 +69,7 @@ impl GitManager {
     }
 
     /// Create a new release/tag
-    pub fn create_release(
-        &self,
-        repo_id: &str,
-        tag_name: &str,
-        message: &str,
-    ) -> Result<()> {
+    pub fn create_release(&self, repo_id: &str, tag_name: &str, message: &str) -> Result<()> {
         let repo = self.open_repo(repo_id)?;
 
         let signature = repo

@@ -7,7 +7,6 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Terminal,
 };
@@ -77,7 +76,11 @@ async fn run_app<B: ratatui::backend::Backend>(
 
             // Header
             let header = Paragraph::new("pctrl - Mission Control for Self-Hosters & Indie Devs")
-                .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+                .style(
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )
                 .block(Block::default().borders(Borders::ALL));
             f.render_widget(header, chunks[0]);
 

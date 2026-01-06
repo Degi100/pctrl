@@ -7,12 +7,12 @@ edition = "2021"
 tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-pctrl-core = { path = "../../crates/core" }
-pctrl-database = { path = "../../crates/database" }
-pctrl-ssh = { path = "../../crates/ssh" }
-pctrl-docker = { path = "../../crates/docker" }
-pctrl-coolify = { path = "../../crates/coolify" }
-pctrl-git = { path = "../../crates/git" }
+pctrl-core = { path = "../../../crates/core" }
+pctrl-database = { path = "../../../crates/database" }
+pctrl-ssh = { path = "../../../crates/ssh" }
+pctrl-docker = { path = "../../../crates/docker" }
+pctrl-coolify = { path = "../../../crates/coolify" }
+pctrl-git = { path = "../../../crates/git" }
 
 tauri = { version = "1.5", features = ["shell-open"] }
 serde = { version = "1.0", features = ["derive"] }

@@ -1,0 +1,56 @@
+# pctrl Configuration Example
+# This file shows example configuration for pctrl
+
+# Database settings
+database:
+  path: "~/.config/pctrl/pctrl.db"
+  encryption_enabled: true
+
+# SSH Connections
+ssh_connections:
+  - id: "prod-server-1"
+    name: "Production Server 1"
+    host: "prod1.example.com"
+    port: 22
+    username: "admin"
+    auth_method:
+      type: "public_key"
+      key_path: "~/.ssh/id_rsa"
+
+  - id: "dev-server"
+    name: "Development Server"
+    host: "dev.example.com"
+    port: 2222
+    username: "developer"
+    auth_method:
+      type: "public_key"
+      key_path: "~/.ssh/id_rsa"
+
+# Docker Hosts
+docker_hosts:
+  - id: "local-docker"
+    name: "Local Docker"
+    url: "unix:///var/run/docker.sock"
+
+  - id: "remote-docker"
+    name: "Remote Docker Host"
+    url: "tcp://docker.example.com:2375"
+
+# Coolify Instances
+coolify_instances:
+  - id: "main-coolify"
+    name: "Main Coolify Instance"
+    url: "https://coolify.example.com"
+    api_key: "your-api-key-here"
+
+# Git Repositories
+git_repos:
+  - id: "project-1"
+    name: "Main Project"
+    path: "/path/to/project"
+    remote_url: "https://github.com/username/project.git"
+
+  - id: "project-2"
+    name: "Another Project"
+    path: "/path/to/another-project"
+    remote_url: "https://github.com/username/another-project.git"

@@ -73,9 +73,15 @@ enum DockerCommands {
     /// List Docker containers
     List { host_id: String },
     /// Start a container
-    Start { host_id: String, container_id: String },
+    Start {
+        host_id: String,
+        container_id: String,
+    },
     /// Stop a container
-    Stop { host_id: String, container_id: String },
+    Stop {
+        host_id: String,
+        container_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -83,7 +89,10 @@ enum CoolifyCommands {
     /// List deployments
     List { instance_id: String },
     /// Deploy a project
-    Deploy { instance_id: String, project_id: String },
+    Deploy {
+        instance_id: String,
+        project_id: String,
+    },
 }
 
 #[derive(Subcommand)]

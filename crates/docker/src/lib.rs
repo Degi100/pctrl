@@ -1,5 +1,5 @@
-use bollard::Docker;
 use bollard::container::{ListContainersOptions, StartContainerOptions, StopContainerOptions};
+use bollard::Docker;
 use pctrl_core::{DockerHost, Result};
 use serde::{Deserialize, Serialize};
 
