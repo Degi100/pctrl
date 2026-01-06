@@ -51,12 +51,18 @@ pub fn print_banner(version: &str) {
 #[allow(dead_code)]
 pub fn section(title: &str) {
     println!();
-    println!("{}┌─────────────────────────────────────────┐{}", BLUE, RESET);
+    println!(
+        "{}┌─────────────────────────────────────────┐{}",
+        BLUE, RESET
+    );
     println!(
         "{}│{} {}{}{:<39}{} {}│{}",
         BLUE, RESET, WHITE, BOLD, title, RESET, BLUE, RESET
     );
-    println!("{}└─────────────────────────────────────────┘{}", BLUE, RESET);
+    println!(
+        "{}└─────────────────────────────────────────┘{}",
+        BLUE, RESET
+    );
 }
 
 /// Print a step indicator [1/4]
@@ -131,10 +137,7 @@ pub fn success_box(title: &str, lines: &[&str]) {
         GREEN, RESET
     );
     for line in lines {
-        println!(
-            "{}  │{}  {:<41}  {}│{}",
-            GREEN, RESET, line, GREEN, RESET
-        );
+        println!("{}  │{}  {:<41}  {}│{}", GREEN, RESET, line, GREEN, RESET);
     }
     println!(
         "{}  └───────────────────────────────────────────┘{}",

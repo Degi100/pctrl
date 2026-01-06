@@ -366,12 +366,11 @@ impl Database {
 
     /// Check if a Docker host exists
     pub async fn docker_host_exists(&self, id: &str) -> Result<bool> {
-        let row: Option<(i64,)> =
-            sqlx::query_as("SELECT COUNT(*) FROM docker_hosts WHERE id = ?")
-                .bind(id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+        let row: Option<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM docker_hosts WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         Ok(row.map(|(count,)| count > 0).unwrap_or(false))
     }
@@ -381,7 +380,10 @@ impl Database {
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Add or update a Coolify instance
-    pub async fn save_coolify_instance(&self, instance: &pctrl_core::CoolifyInstance) -> Result<()> {
+    pub async fn save_coolify_instance(
+        &self,
+        instance: &pctrl_core::CoolifyInstance,
+    ) -> Result<()> {
         sqlx::query(
             "INSERT OR REPLACE INTO coolify_instances (id, name, url, api_key)
              VALUES (?, ?, ?, ?)",
@@ -454,12 +456,11 @@ impl Database {
 
     /// Check if a Git repository exists
     pub async fn git_repo_exists(&self, id: &str) -> Result<bool> {
-        let row: Option<(i64,)> =
-            sqlx::query_as("SELECT COUNT(*) FROM git_repos WHERE id = ?")
-                .bind(id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+        let row: Option<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM git_repos WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         Ok(row.map(|(count,)| count > 0).unwrap_or(false))
     }

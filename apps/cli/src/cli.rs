@@ -256,7 +256,10 @@ async fn handle_coolify_command(
                 println!("Coolify Instances ({}):", config.coolify_instances.len());
                 println!();
                 for instance in &config.coolify_instances {
-                    println!("  🚀 [{}] {} - {}", instance.id, instance.name, instance.url);
+                    println!(
+                        "  🚀 [{}] {} - {}",
+                        instance.id, instance.name, instance.url
+                    );
                 }
             }
         }
@@ -365,7 +368,10 @@ async fn handle_git_command(
             let id = name.to_lowercase().replace(' ', "-");
 
             if db.git_repo_exists(&id).await? {
-                anyhow::bail!("Git repository '{}' already exists. Use a different name.", id);
+                anyhow::bail!(
+                    "Git repository '{}' already exists. Use a different name.",
+                    id
+                );
             }
 
             // Verify path exists

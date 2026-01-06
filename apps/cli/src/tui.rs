@@ -39,7 +39,6 @@ impl App {
             db,
         }
     }
-
 }
 
 pub async fn run(config: Arc<Config>, db: Arc<Database>) -> anyhow::Result<()> {
@@ -120,7 +119,11 @@ async fn run_app<B: ratatui::backend::Backend>(
             // Sidebar Menu
             let menu_items: Vec<ListItem> = vec![
                 ("SSH", app.config.ssh_connections.len(), SelectedPanel::Ssh),
-                ("Docker", app.config.docker_hosts.len(), SelectedPanel::Docker),
+                (
+                    "Docker",
+                    app.config.docker_hosts.len(),
+                    SelectedPanel::Docker,
+                ),
                 (
                     "Coolify",
                     app.config.coolify_instances.len(),
@@ -142,7 +145,10 @@ async fn run_app<B: ratatui::backend::Backend>(
                 ListItem::new(Line::from(vec![
                     Span::styled(prefix, style),
                     Span::styled(format!("{}", name), style),
-                    Span::styled(format!(" ({})", count), Style::default().fg(Color::DarkGray)),
+                    Span::styled(
+                        format!(" ({})", count),
+                        Style::default().fg(Color::DarkGray),
+                    ),
                 ]))
             })
             .collect();

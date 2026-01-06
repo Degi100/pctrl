@@ -211,10 +211,7 @@ async fn main() -> anyhow::Result<()> {
     // ─────────────────────────────────────────────────────────────────────────
     // 2. Config laden
     // ─────────────────────────────────────────────────────────────────────────
-    let config = db
-        .load_config()
-        .await
-        .unwrap_or_else(|_| Config::default());
+    let config = db.load_config().await.unwrap_or_else(|_| Config::default());
 
     let config = Arc::new(config);
 
