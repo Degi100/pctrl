@@ -17,6 +17,7 @@
     "mobile": "cd apps/mobile && npm start"
   },
   "devDependencies": {
+    "babel-preset-expo": "^54.0.0",
     "prettier": "^3.1.0",
     "turbo": "^1.11.0"
   }
