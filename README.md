@@ -2,6 +2,27 @@
 
 Mission Control for Self-Hosters & Indie Devs - Manage servers, containers, deployments and releases from one place.
 
+## Quick Start
+
+Get started with pctrl in 3 steps:
+
+```bash
+# 1. Clone and build
+git clone https://github.com/Degi100/pctrl.git
+cd pctrl
+cargo build --release -p pctrl-cli
+
+# 2. Run the CLI
+./target/release/pctrl --help
+
+# 3. Try different modes
+./target/release/pctrl ssh list              # CLI mode
+./target/release/pctrl --mode tui            # TUI mode
+cd apps/desktop && npm install && npm run tauri:dev  # GUI mode
+```
+
+**📚 For detailed instructions, see [QUICKSTART.md](QUICKSTART.md)**
+
 ## Features
 
 - **🔐 SSH Management**: Connect to and manage remote servers securely
