@@ -1,9 +1,9 @@
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
+    aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
 use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHasher};
+use argon2::Argon2;
 use pctrl_core::{Config, Result};
 use sqlx::{sqlite::SqlitePool, Row};
 
@@ -11,6 +11,8 @@ use sqlx::{sqlite::SqlitePool, Row};
 pub struct Database {
     pool: SqlitePool,
     cipher: Option<Aes256Gcm>,
+    #[allow(dead_code)]
+    encryption_salt: Option<Vec<u8>>,
 }
 
 impl Database {
@@ -21,14 +23,26 @@ impl Database {
             .await
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        let cipher = if let Some(pwd) = password {
-            let key = Self::derive_key(pwd)?;
-            Some(Aes256Gcm::new(&key.into()))
+        let (cipher, salt) = if let Some(pwd) = password {
+            // In production, the salt should be stored securely and retrieved
+            // For now, we use a fixed salt derived from the database path
+            let salt_string = format!("pctrl-salt-{}", path);
+            let salt_bytes = salt_string.as_bytes();
+            let mut salt = [0u8; 16];
+            let copy_len = 16.min(salt_bytes.len());
+            salt[..copy_len].copy_from_slice(&salt_bytes[..copy_len]);
+
+            let key = Self::derive_key(pwd, &salt)?;
+            (Some(Aes256Gcm::new(&key.into())), Some(salt.to_vec()))
         } else {
-            None
+            (None, None)
         };
 
-        let db = Self { pool, cipher };
+        let db = Self {
+            pool,
+            cipher,
+            encryption_salt: salt,
+        };
         db.init_schema().await?;
         Ok(db)
     }
@@ -95,13 +109,18 @@ impl Database {
         Ok(())
     }
 
-    /// Derive encryption key from password using Argon2
-    fn derive_key(password: &str) -> Result<[u8; 32]> {
-        let salt = SaltString::generate(&mut OsRng);
+    /// Derive encryption key from password using Argon2 with a fixed salt
+    fn derive_key(password: &str, salt: &[u8]) -> Result<[u8; 32]> {
+        use argon2::password_hash::PasswordHasher;
+
+        // Create a SaltString from the provided salt bytes
+        let salt_string = SaltString::encode_b64(salt)
+            .map_err(|e| pctrl_core::Error::Database(format!("Salt encoding failed: {}", e)))?;
+
         let argon2 = Argon2::default();
 
         let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
+            .hash_password(password.as_bytes(), &salt_string)
             .map_err(|e| pctrl_core::Error::Database(format!("Key derivation failed: {}", e)))?;
 
         let hash = password_hash.hash.ok_or_else(|| {
@@ -114,23 +133,42 @@ impl Database {
     }
 
     /// Encrypt data
+    /// Returns nonce (12 bytes) prepended to ciphertext
     pub fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         if let Some(cipher) = &self.cipher {
-            let nonce = Nonce::from_slice(b"unique nonce"); // In production, use random nonce
-            cipher
+            // Generate a random nonce for this encryption operation
+            let nonce_bytes = rand::random::<[u8; 12]>();
+            let nonce = Nonce::from_slice(&nonce_bytes);
+
+            let ciphertext = cipher
                 .encrypt(nonce, data)
-                .map_err(|e| pctrl_core::Error::Database(format!("Encryption failed: {}", e)))
+                .map_err(|e| pctrl_core::Error::Database(format!("Encryption failed: {}", e)))?;
+
+            // Prepend nonce to ciphertext for storage
+            let mut result = nonce_bytes.to_vec();
+            result.extend_from_slice(&ciphertext);
+            Ok(result)
         } else {
             Ok(data.to_vec())
         }
     }
 
     /// Decrypt data
+    /// Expects nonce (12 bytes) prepended to ciphertext
     pub fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         if let Some(cipher) = &self.cipher {
-            let nonce = Nonce::from_slice(b"unique nonce");
+            if data.len() < 12 {
+                return Err(pctrl_core::Error::Database(
+                    "Invalid encrypted data: too short".to_string(),
+                ));
+            }
+
+            // Extract nonce from the first 12 bytes
+            let nonce = Nonce::from_slice(&data[..12]);
+            let ciphertext = &data[12..];
+
             cipher
-                .decrypt(nonce, data)
+                .decrypt(nonce, ciphertext)
                 .map_err(|e| pctrl_core::Error::Database(format!("Decryption failed: {}", e)))
         } else {
             Ok(data.to_vec())

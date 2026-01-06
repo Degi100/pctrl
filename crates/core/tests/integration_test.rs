@@ -1,4 +1,4 @@
-use pctrl_core::{Config, Mode, SshConnection, AuthMethod};
+use pctrl_core::{AuthMethod, Config, Mode, SshConnection};
 
 #[test]
 fn test_config_default() {
@@ -22,7 +22,7 @@ fn test_ssh_connection_creation() {
             key_path: "/path/to/key".to_string(),
         },
     };
-    
+
     assert_eq!(conn.id, "test-1");
     assert_eq!(conn.host, "example.com");
     assert_eq!(conn.port, 22);
@@ -47,6 +47,6 @@ fn test_config_serialization() {
     let config = Config::default();
     let json = serde_json::to_string(&config).unwrap();
     let deserialized: Config = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(config.database_path, deserialized.database_path);
 }
