@@ -1,0 +1,23 @@
+{
+  "name": "pctrl",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/desktop",
+    "apps/landing",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json}\"",
+    "desktop": "cd apps/desktop && npm run tauri dev",
+    "landing": "cd apps/landing && npm run dev",
+    "mobile": "cd apps/mobile && npm start"
+  },
+  "devDependencies": {
+    "prettier": "^3.1.0",
+    "turbo": "^1.11.0"
+  }
+}

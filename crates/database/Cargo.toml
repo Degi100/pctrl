@@ -1,0 +1,19 @@
+[package]
+name = "pctrl-database"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+pctrl-core = { path = "../core" }
+sqlx.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+aes-gcm.workspace = true
+argon2.workspace = true
+rand.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
