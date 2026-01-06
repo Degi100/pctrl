@@ -17,8 +17,15 @@ pub struct Database {
 
 impl Database {
     /// Create a new database connection
+    /// Path kann ein Dateipfad oder eine SQLite-URL sein
     pub async fn new(path: &str, password: Option<&str>) -> Result<Self> {
-        let url = format!("sqlite:{}", path);
+        // SQLite URL: mode=rwc erstellt die DB automatisch wenn sie nicht existiert
+        let url = if path.starts_with("sqlite:") {
+            path.to_string()
+        } else {
+            format!("sqlite:{}?mode=rwc", path)
+        };
+
         let pool = SqlitePool::connect(&url)
             .await
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
@@ -231,5 +238,54 @@ impl Database {
         }
 
         Ok(config)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SSH Connection Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add or update a single SSH connection
+    pub async fn save_ssh_connection(&self, conn: &pctrl_core::SshConnection) -> Result<()> {
+        let auth_method = serde_json::to_string(&conn.auth_method)
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        sqlx::query(
+            "INSERT OR REPLACE INTO ssh_connections (id, name, host, port, username, auth_method)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&conn.id)
+        .bind(&conn.name)
+        .bind(&conn.host)
+        .bind(conn.port as i64)
+        .bind(&conn.username)
+        .bind(&auth_method)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Remove an SSH connection by ID
+    pub async fn remove_ssh_connection(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM ssh_connections WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if an SSH connection exists
+    pub async fn ssh_connection_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> =
+            sqlx::query_as("SELECT COUNT(*) FROM ssh_connections WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
     }
 }
