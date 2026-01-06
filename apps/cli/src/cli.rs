@@ -1,6 +1,6 @@
 use crate::{Commands, CoolifyCommands, DockerCommands, GitCommands, SshCommands};
 use pctrl_coolify::CoolifyManager;
-use pctrl_core::{AuthMethod, Config, SshConnection};
+use pctrl_core::{AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, SshConnection};
 use pctrl_database::Database;
 use pctrl_docker::DockerManager;
 use pctrl_git::GitManager;
@@ -14,9 +14,9 @@ pub async fn handle_command(
 ) -> anyhow::Result<()> {
     match command {
         Commands::Ssh { command } => handle_ssh_command(command, &config, &db).await,
-        Commands::Docker { command } => handle_docker_command(command, &config).await,
-        Commands::Coolify { command } => handle_coolify_command(command, &config).await,
-        Commands::Git { command } => handle_git_command(command, &config).await,
+        Commands::Docker { command } => handle_docker_command(command, &config, &db).await,
+        Commands::Coolify { command } => handle_coolify_command(command, &config, &db).await,
+        Commands::Git { command } => handle_git_command(command, &config, &db).await,
     }
 }
 
@@ -125,7 +125,11 @@ async fn handle_ssh_command(
     Ok(())
 }
 
-async fn handle_docker_command(command: DockerCommands, config: &Config) -> anyhow::Result<()> {
+async fn handle_docker_command(
+    command: DockerCommands,
+    config: &Config,
+    db: &Database,
+) -> anyhow::Result<()> {
     // ─────────────────────────────────────────────────────────────────────────
     // Manager mit Config-Daten initialisieren
     // ─────────────────────────────────────────────────────────────────────────
@@ -135,6 +139,53 @@ async fn handle_docker_command(command: DockerCommands, config: &Config) -> anyh
     }
 
     match command {
+        DockerCommands::Hosts => {
+            if config.docker_hosts.is_empty() {
+                println!("No Docker hosts configured.");
+                println!();
+                println!("Add one with:");
+                println!("  pctrl docker add <name> [-u <url>]");
+            } else {
+                println!("Docker Hosts ({}):", config.docker_hosts.len());
+                println!();
+                for host in &config.docker_hosts {
+                    println!("  🐳 [{}] {} - {}", host.id, host.name, host.url);
+                }
+            }
+        }
+
+        DockerCommands::Add { name, url } => {
+            let id = name.to_lowercase().replace(' ', "-");
+
+            if db.docker_host_exists(&id).await? {
+                anyhow::bail!("Docker host '{}' already exists. Use a different name.", id);
+            }
+
+            let host = DockerHost {
+                id: id.clone(),
+                name: name.clone(),
+                url: url.clone(),
+            };
+
+            db.save_docker_host(&host).await?;
+
+            println!("✓ Docker host added:");
+            println!();
+            println!("  Name:  {}", name);
+            println!("  ID:    {}", id);
+            println!("  URL:   {}", url);
+            println!();
+            println!("List containers with: pctrl docker list {}", id);
+        }
+
+        DockerCommands::Remove { id } => {
+            if db.remove_docker_host(&id).await? {
+                println!("✓ Docker host '{}' removed", id);
+            } else {
+                println!("✗ Docker host '{}' not found", id);
+            }
+        }
+
         DockerCommands::List { host_id } => {
             let containers = docker_manager.list_containers(&host_id).await?;
             if containers.is_empty() {
@@ -181,7 +232,11 @@ async fn handle_docker_command(command: DockerCommands, config: &Config) -> anyh
     Ok(())
 }
 
-async fn handle_coolify_command(command: CoolifyCommands, config: &Config) -> anyhow::Result<()> {
+async fn handle_coolify_command(
+    command: CoolifyCommands,
+    config: &Config,
+    db: &Database,
+) -> anyhow::Result<()> {
     // ─────────────────────────────────────────────────────────────────────────
     // Manager mit Config-Daten initialisieren
     // ─────────────────────────────────────────────────────────────────────────
@@ -191,6 +246,57 @@ async fn handle_coolify_command(command: CoolifyCommands, config: &Config) -> an
     }
 
     match command {
+        CoolifyCommands::Instances => {
+            if config.coolify_instances.is_empty() {
+                println!("No Coolify instances configured.");
+                println!();
+                println!("Add one with:");
+                println!("  pctrl coolify add <name> -u <url> -t <token>");
+            } else {
+                println!("Coolify Instances ({}):", config.coolify_instances.len());
+                println!();
+                for instance in &config.coolify_instances {
+                    println!("  🚀 [{}] {} - {}", instance.id, instance.name, instance.url);
+                }
+            }
+        }
+
+        CoolifyCommands::Add { name, url, token } => {
+            let id = name.to_lowercase().replace(' ', "-");
+
+            if db.coolify_instance_exists(&id).await? {
+                anyhow::bail!(
+                    "Coolify instance '{}' already exists. Use a different name.",
+                    id
+                );
+            }
+
+            let instance = CoolifyInstance {
+                id: id.clone(),
+                name: name.clone(),
+                url: url.clone(),
+                api_key: token,
+            };
+
+            db.save_coolify_instance(&instance).await?;
+
+            println!("✓ Coolify instance added:");
+            println!();
+            println!("  Name:  {}", name);
+            println!("  ID:    {}", id);
+            println!("  URL:   {}", url);
+            println!();
+            println!("List deployments with: pctrl coolify list {}", id);
+        }
+
+        CoolifyCommands::Remove { id } => {
+            if db.remove_coolify_instance(&id).await? {
+                println!("✓ Coolify instance '{}' removed", id);
+            } else {
+                println!("✗ Coolify instance '{}' not found", id);
+            }
+        }
+
         CoolifyCommands::List { instance_id } => {
             let deployments = coolify_manager.list_deployments(&instance_id).await?;
             if deployments.is_empty() {
@@ -226,7 +332,11 @@ async fn handle_coolify_command(command: CoolifyCommands, config: &Config) -> an
     Ok(())
 }
 
-async fn handle_git_command(command: GitCommands, config: &Config) -> anyhow::Result<()> {
+async fn handle_git_command(
+    command: GitCommands,
+    config: &Config,
+    db: &Database,
+) -> anyhow::Result<()> {
     // ─────────────────────────────────────────────────────────────────────────
     // Manager mit Config-Daten initialisieren
     // ─────────────────────────────────────────────────────────────────────────
@@ -236,6 +346,60 @@ async fn handle_git_command(command: GitCommands, config: &Config) -> anyhow::Re
     }
 
     match command {
+        GitCommands::Repos => {
+            if config.git_repos.is_empty() {
+                println!("No Git repositories configured.");
+                println!();
+                println!("Add one with:");
+                println!("  pctrl git add <name> -p <path>");
+            } else {
+                println!("Git Repositories ({}):", config.git_repos.len());
+                println!();
+                for repo in &config.git_repos {
+                    println!("  📁 [{}] {} - {}", repo.id, repo.name, repo.path);
+                }
+            }
+        }
+
+        GitCommands::Add { name, path } => {
+            let id = name.to_lowercase().replace(' ', "-");
+
+            if db.git_repo_exists(&id).await? {
+                anyhow::bail!("Git repository '{}' already exists. Use a different name.", id);
+            }
+
+            // Verify path exists
+            let abs_path = std::path::Path::new(&path);
+            if !abs_path.exists() {
+                anyhow::bail!("Path '{}' does not exist.", path);
+            }
+
+            let repo = GitRepo {
+                id: id.clone(),
+                name: name.clone(),
+                path: path.clone(),
+                remote_url: None,
+            };
+
+            db.save_git_repo(&repo).await?;
+
+            println!("✓ Git repository added:");
+            println!();
+            println!("  Name:  {}", name);
+            println!("  ID:    {}", id);
+            println!("  Path:  {}", path);
+            println!();
+            println!("List releases with: pctrl git list {}", id);
+        }
+
+        GitCommands::Remove { id } => {
+            if db.remove_git_repo(&id).await? {
+                println!("✓ Git repository '{}' removed", id);
+            } else {
+                println!("✗ Git repository '{}' not found", id);
+            }
+        }
+
         GitCommands::List { repo_id } => {
             let releases = git_manager.list_releases(&repo_id)?;
             if releases.is_empty() {

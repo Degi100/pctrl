@@ -237,6 +237,50 @@ impl Database {
             });
         }
 
+        // Load Docker hosts
+        let rows = sqlx::query("SELECT id, name, url FROM docker_hosts")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        for row in rows {
+            config.docker_hosts.push(pctrl_core::DockerHost {
+                id: row.get("id"),
+                name: row.get("name"),
+                url: row.get("url"),
+            });
+        }
+
+        // Load Coolify instances
+        let rows = sqlx::query("SELECT id, name, url, api_key FROM coolify_instances")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        for row in rows {
+            config.coolify_instances.push(pctrl_core::CoolifyInstance {
+                id: row.get("id"),
+                name: row.get("name"),
+                url: row.get("url"),
+                api_key: row.get("api_key"),
+            });
+        }
+
+        // Load Git repositories
+        let rows = sqlx::query("SELECT id, name, path, remote_url FROM git_repos")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        for row in rows {
+            config.git_repos.push(pctrl_core::GitRepo {
+                id: row.get("id"),
+                name: row.get("name"),
+                path: row.get("path"),
+                remote_url: row.get("remote_url"),
+            });
+        }
+
         Ok(config)
     }
 
@@ -281,6 +325,137 @@ impl Database {
     pub async fn ssh_connection_exists(&self, id: &str) -> Result<bool> {
         let row: Option<(i64,)> =
             sqlx::query_as("SELECT COUNT(*) FROM ssh_connections WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Docker Host Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add or update a Docker host
+    pub async fn save_docker_host(&self, host: &pctrl_core::DockerHost) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO docker_hosts (id, name, url)
+             VALUES (?, ?, ?)",
+        )
+        .bind(&host.id)
+        .bind(&host.name)
+        .bind(&host.url)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Remove a Docker host by ID
+    pub async fn remove_docker_host(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM docker_hosts WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if a Docker host exists
+    pub async fn docker_host_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> =
+            sqlx::query_as("SELECT COUNT(*) FROM docker_hosts WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Coolify Instance Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add or update a Coolify instance
+    pub async fn save_coolify_instance(&self, instance: &pctrl_core::CoolifyInstance) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO coolify_instances (id, name, url, api_key)
+             VALUES (?, ?, ?, ?)",
+        )
+        .bind(&instance.id)
+        .bind(&instance.name)
+        .bind(&instance.url)
+        .bind(&instance.api_key)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Remove a Coolify instance by ID
+    pub async fn remove_coolify_instance(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM coolify_instances WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if a Coolify instance exists
+    pub async fn coolify_instance_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> =
+            sqlx::query_as("SELECT COUNT(*) FROM coolify_instances WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Git Repository Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Add or update a Git repository
+    pub async fn save_git_repo(&self, repo: &pctrl_core::GitRepo) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO git_repos (id, name, path, remote_url)
+             VALUES (?, ?, ?, ?)",
+        )
+        .bind(&repo.id)
+        .bind(&repo.name)
+        .bind(&repo.path)
+        .bind(&repo.remote_url)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Remove a Git repository by ID
+    pub async fn remove_git_repo(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM git_repos WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if a Git repository exists
+    pub async fn git_repo_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> =
+            sqlx::query_as("SELECT COUNT(*) FROM git_repos WHERE id = ?")
                 .bind(id)
                 .fetch_optional(&self.pool)
                 .await

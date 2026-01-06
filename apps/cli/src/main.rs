@@ -107,7 +107,19 @@ enum SshCommands {
 
 #[derive(Subcommand)]
 enum DockerCommands {
-    /// List Docker containers
+    /// List configured Docker hosts
+    Hosts,
+    /// Add a new Docker host
+    Add {
+        /// Host name (used as ID)
+        name: String,
+        /// Docker socket URL (e.g., unix:///var/run/docker.sock or tcp://localhost:2375)
+        #[arg(short, long, default_value = "unix:///var/run/docker.sock")]
+        url: String,
+    },
+    /// Remove a Docker host
+    Remove { id: String },
+    /// List containers on a host
     List { host_id: String },
     /// Start a container
     Start {
@@ -123,6 +135,21 @@ enum DockerCommands {
 
 #[derive(Subcommand)]
 enum CoolifyCommands {
+    /// List configured Coolify instances
+    Instances,
+    /// Add a new Coolify instance
+    Add {
+        /// Instance name (used as ID)
+        name: String,
+        /// Coolify URL (e.g., https://coolify.example.com)
+        #[arg(short, long)]
+        url: String,
+        /// API token
+        #[arg(short, long)]
+        token: String,
+    },
+    /// Remove a Coolify instance
+    Remove { id: String },
     /// List deployments
     List { instance_id: String },
     /// Deploy a project
@@ -134,6 +161,18 @@ enum CoolifyCommands {
 
 #[derive(Subcommand)]
 enum GitCommands {
+    /// List configured Git repositories
+    Repos,
+    /// Add a Git repository
+    Add {
+        /// Repository name (used as ID)
+        name: String,
+        /// Path to local repository
+        #[arg(short, long)]
+        path: String,
+    },
+    /// Remove a Git repository
+    Remove { id: String },
     /// List releases/tags
     List { repo_id: String },
     /// Create a new release
