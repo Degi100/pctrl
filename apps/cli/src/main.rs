@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 mod cli;
+mod style;
 mod tui;
 
 /// Default database path
@@ -186,14 +187,30 @@ async fn main() -> anyhow::Result<()> {
             if let Some(command) = cli.command {
                 cli::handle_command(command, config.clone(), db.clone()).await?;
             } else {
-                println!("pctrl - Mission Control for Self-Hosters & Indie Devs");
-                println!("Use --help for more information");
+                // Styled status display
+                style::print_banner(env!("CARGO_PKG_VERSION"));
+
+                println!("  {}Status{}", style::BOLD, style::RESET);
+                style::divider();
+                style::kv_count("SSH Connections", config.ssh_connections.len());
+                style::kv_count("Docker Hosts", config.docker_hosts.len());
+                style::kv_count("Coolify Instances", config.coolify_instances.len());
+                style::kv_count("Git Repos", config.git_repos.len());
+                style::divider();
+                println!(
+                    "  {}Database:{} {}",
+                    style::GRAY,
+                    style::RESET,
+                    style::format_path(&db_path.display().to_string(), 40)
+                );
                 println!();
-                println!("Database: {}", db_path.display());
-                println!("SSH Connections: {}", config.ssh_connections.len());
-                println!("Docker Hosts: {}", config.docker_hosts.len());
-                println!("Coolify Instances: {}", config.coolify_instances.len());
-                println!("Git Repos: {}", config.git_repos.len());
+                println!(
+                    "  {}Use {} for available commands{}",
+                    style::DIM,
+                    format!("{}pctrl --help{}", style::CYAN, style::DIM),
+                    style::RESET
+                );
+                println!();
             }
         }
         Mode::Tui => {
