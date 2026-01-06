@@ -1,0 +1,300 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="pctrl - Mission Control for Self-Hosters & Indie Devs">
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>pctrl</h1>
+        <p class="tagline">Mission Control for Self-Hosters & Indie Devs</p>
+        <p class="description">
+          Manage servers, containers, deployments and releases from one place.
+        </p>
+        <div class="cta">
+          <a href="#features" class="btn btn-primary">Learn More</a>
+          <a href="https://github.com/Degi100/pctrl" class="btn btn-secondary">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="container">
+        <h2>Features</h2>
+        <div class="feature-grid">
+          <div class="feature">
+            <h3>🔐 SSH Management</h3>
+            <p>Connect to and manage your remote servers securely with SSH key support.</p>
+          </div>
+          <div class="feature">
+            <h3>🐳 Docker Control</h3>
+            <p>Monitor and manage Docker containers across multiple hosts.</p>
+          </div>
+          <div class="feature">
+            <h3>🚀 Coolify Integration</h3>
+            <p>Deploy and manage applications on your Coolify instances.</p>
+          </div>
+          <div class="feature">
+            <h3>📦 Git Releases</h3>
+            <p>Create and manage Git releases for your repositories.</p>
+          </div>
+          <div class="feature">
+            <h3>💻 Three Modes</h3>
+            <p>CLI, TUI, and GUI modes to suit your workflow.</p>
+          </div>
+          <div class="feature">
+            <h3>🔒 Encrypted Storage</h3>
+            <p>Local-first data storage with encryption support.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap" class="roadmap">
+      <div class="container">
+        <h2>Roadmap</h2>
+        <div class="timeline">
+          <div class="milestone">
+            <h3>v0.1.0 - Foundation</h3>
+            <ul>
+              <li>✅ Core architecture</li>
+              <li>✅ CLI interface with clap</li>
+              <li>✅ TUI interface with ratatui</li>
+              <li>✅ GUI with Tauri and React</li>
+              <li>✅ Basic SSH, Docker, Coolify, Git support</li>
+            </ul>
+          </div>
+          <div class="milestone">
+            <h3>v0.2.0 - Enhanced Features</h3>
+            <ul>
+              <li>🔄 Advanced SSH connection management</li>
+              <li>🔄 Real-time container monitoring</li>
+              <li>🔄 Deployment pipelines</li>
+              <li>🔄 Mobile app (Expo)</li>
+            </ul>
+          </div>
+          <div class="milestone">
+            <h3>v1.0.0 - Production Ready</h3>
+            <ul>
+              <li>⏳ Full test coverage</li>
+              <li>⏳ Documentation</li>
+              <li>⏳ Plugin system</li>
+              <li>⏳ Cloud sync (optional)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="changelog" class="changelog">
+      <div class="container">
+        <h2>Changelog</h2>
+        <div class="changes">
+          <div class="version">
+            <h3>v0.1.0 <span class="date">2024-01-06</span></h3>
+            <ul>
+              <li>Initial release</li>
+              <li>CLI, TUI, and GUI interfaces</li>
+              <li>SSH connection management</li>
+              <li>Docker container management</li>
+              <li>Coolify deployment integration</li>
+              <li>Git release management</li>
+              <li>Encrypted SQLite database</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="container">
+        <p>&copy; 2024 pctrl. Open source project.</p>
+        <p>
+          <a href="https://github.com/Degi100/pctrl">GitHub</a> •
+          <a href="https://github.com/Degi100/pctrl/issues">Issues</a> •
+          <a href="https://github.com/Degi100/pctrl/blob/main/LICENSE">License</a>
+        </p>
+      </div>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  main {
+    width: 100%;
+  }
+
+  .hero {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    padding: 6rem 0;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+
+  .tagline {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.95;
+  }
+
+  .description {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+  }
+
+  .cta {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.2s;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    background: white;
+    color: var(--primary);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+  }
+
+  section {
+    padding: 4rem 0;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+    margin-bottom: 3rem;
+    text-align: center;
+    color: var(--dark);
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+
+  .feature {
+    padding: 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .feature h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--primary);
+  }
+
+  .roadmap {
+    background: var(--light);
+  }
+
+  .timeline {
+    display: grid;
+    gap: 2rem;
+  }
+
+  .milestone {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .milestone h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+  }
+
+  .milestone ul {
+    list-style: none;
+  }
+
+  .milestone li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .changes {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .version {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .version h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .date {
+    font-size: 1rem;
+    color: #666;
+    font-weight: normal;
+  }
+
+  .version ul {
+    list-style: none;
+  }
+
+  .version li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+  }
+
+  .version li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+  }
+
+  footer {
+    background: var(--dark);
+    color: white;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  footer a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+</style>

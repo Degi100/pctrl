@@ -1,0 +1,15 @@
+[package]
+name = "pctrl-docker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+pctrl-core = { path = "../core" }
+bollard.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
