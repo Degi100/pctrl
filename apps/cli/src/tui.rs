@@ -5,7 +5,6 @@ use crossterm::{
 };
 use pctrl_core::{AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, SshConnection};
 use pctrl_database::Database;
-use uuid::Uuid;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -18,6 +17,7 @@ use std::collections::HashMap;
 use std::io;
 use std::path::Path;
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone, Copy, PartialEq)]
 enum SelectedPanel {
@@ -30,15 +30,15 @@ enum SelectedPanel {
 
 #[derive(Clone, Copy, PartialEq)]
 enum ConnectionStatus {
-    Unknown,    // Not yet tested (yellow)
-    Online,     // Connection successful (green)
-    Offline,    // Connection failed (red)
+    Unknown, // Not yet tested (yellow)
+    Online,  // Connection successful (green)
+    Offline, // Connection failed (red)
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum InputMode {
-    Normal,     // Normal navigation mode
-    Adding,     // Adding a new entry (form input)
+    Normal, // Normal navigation mode
+    Adding, // Adding a new entry (form input)
 }
 
 #[derive(Clone, Default)]
@@ -219,10 +219,22 @@ impl App {
         // For now, keep them as Unknown
     }
 
-    fn count_by_status(&self, statuses: &HashMap<String, ConnectionStatus>) -> (usize, usize, usize) {
-        let online = statuses.values().filter(|s| **s == ConnectionStatus::Online).count();
-        let offline = statuses.values().filter(|s| **s == ConnectionStatus::Offline).count();
-        let unknown = statuses.values().filter(|s| **s == ConnectionStatus::Unknown).count();
+    fn count_by_status(
+        &self,
+        statuses: &HashMap<String, ConnectionStatus>,
+    ) -> (usize, usize, usize) {
+        let online = statuses
+            .values()
+            .filter(|s| **s == ConnectionStatus::Online)
+            .count();
+        let offline = statuses
+            .values()
+            .filter(|s| **s == ConnectionStatus::Offline)
+            .count();
+        let unknown = statuses
+            .values()
+            .filter(|s| **s == ConnectionStatus::Unknown)
+            .count();
         (online, offline, unknown)
     }
 }
@@ -361,13 +373,16 @@ async fn run_app<B: ratatui::backend::Backend>(
                 let mut items: Vec<Line> = vec![
                     Line::from(""),
                     Line::from(Span::styled(
-                        format!("  Add New {}", match app.selected_panel {
-                            SelectedPanel::Ssh => "SSH Connection",
-                            SelectedPanel::Docker => "Docker Host",
-                            SelectedPanel::Coolify => "Coolify Instance",
-                            SelectedPanel::Git => "Git Repository",
-                            SelectedPanel::Status => "",
-                        }),
+                        format!(
+                            "  Add New {}",
+                            match app.selected_panel {
+                                SelectedPanel::Ssh => "SSH Connection",
+                                SelectedPanel::Docker => "Docker Host",
+                                SelectedPanel::Coolify => "Coolify Instance",
+                                SelectedPanel::Git => "Git Repository",
+                                SelectedPanel::Status => "",
+                            }
+                        ),
                         Style::default()
                             .fg(Color::Cyan)
                             .add_modifier(Modifier::BOLD),
@@ -378,12 +393,16 @@ async fn run_app<B: ratatui::backend::Backend>(
                 for (i, (label, value)) in fields.iter().enumerate() {
                     let is_active = i == app.input_form.current_field;
                     let label_style = if is_active {
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+                        Style::default()
+                            .fg(Color::Cyan)
+                            .add_modifier(Modifier::BOLD)
                     } else {
                         Style::default().fg(Color::White)
                     };
                     let value_style = if is_active {
-                        Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
+                        Style::default()
+                            .fg(Color::White)
+                            .add_modifier(Modifier::BOLD)
                     } else {
                         Style::default().fg(Color::DarkGray)
                     };
@@ -410,267 +429,351 @@ async fn run_app<B: ratatui::backend::Backend>(
                 // Normal content display
                 match app.selected_panel {
                     SelectedPanel::Status => {
-                    let (ssh_online, ssh_offline, ssh_unknown) = app.count_by_status(&app.ssh_status);
-                    let (docker_online, docker_offline, docker_unknown) = app.count_by_status(&app.docker_status);
-                    let (coolify_online, coolify_offline, coolify_unknown) = app.count_by_status(&app.coolify_status);
-                    let (git_online, git_offline, git_unknown) = app.count_by_status(&app.git_status);
+                        let (ssh_online, ssh_offline, ssh_unknown) =
+                            app.count_by_status(&app.ssh_status);
+                        let (docker_online, docker_offline, docker_unknown) =
+                            app.count_by_status(&app.docker_status);
+                        let (coolify_online, coolify_offline, coolify_unknown) =
+                            app.count_by_status(&app.coolify_status);
+                        let (git_online, git_offline, git_unknown) =
+                            app.count_by_status(&app.git_status);
 
-                    let ssh_total = ssh_online + ssh_offline + ssh_unknown;
-                    let docker_total = docker_online + docker_offline + docker_unknown;
-                    let coolify_total = coolify_online + coolify_offline + coolify_unknown;
-                    let git_total = git_online + git_offline + git_unknown;
+                        let ssh_total = ssh_online + ssh_offline + ssh_unknown;
+                        let docker_total = docker_online + docker_offline + docker_unknown;
+                        let coolify_total = coolify_online + coolify_offline + coolify_unknown;
+                        let git_total = git_online + git_offline + git_unknown;
 
-                    let mut items: Vec<Line> = vec![
-                        Line::from(""),
-                        Line::from(Span::styled(
-                            "  Overview",
-                            Style::default()
-                                .fg(Color::White)
-                                .add_modifier(Modifier::BOLD),
-                        )),
-                        Line::from(Span::styled(
-                            "  Press 'r' to refresh status",
-                            Style::default().fg(Color::DarkGray),
-                        )),
-                        Line::from(""),
-                    ];
-
-                    // Helper to build status line
-                    fn build_status_line(name: &str, padding: &str, online: usize, offline: usize, unknown: usize) -> Line<'static> {
-                        let total = online + offline + unknown;
-                        if total == 0 {
-                            return Line::from(vec![
-                                Span::styled("  ○ ", Style::default().fg(Color::DarkGray)),
-                                Span::styled(name.to_string(), Style::default().fg(Color::White)),
-                                Span::styled(format!("{}{}", padding, 0), Style::default().fg(Color::DarkGray)),
-                            ]);
-                        }
-
-                        let mut spans = vec![Span::raw("  ")];
-
-                        // Show icons for each status
-                        if online > 0 {
-                            spans.push(Span::styled("●", Style::default().fg(Color::Green)));
-                        }
-                        if offline > 0 {
-                            spans.push(Span::styled("●", Style::default().fg(Color::Red)));
-                        }
-                        if unknown > 0 && online == 0 && offline == 0 {
-                            spans.push(Span::styled("●", Style::default().fg(Color::Yellow)));
-                        }
-                        spans.push(Span::raw(" "));
-
-                        spans.push(Span::styled(name.to_string(), Style::default().fg(Color::White)));
-
-                        // Build count display
-                        let mut count_parts = Vec::new();
-                        if online > 0 {
-                            count_parts.push(format!("{} online", online));
-                        }
-                        if offline > 0 {
-                            count_parts.push(format!("{} offline", offline));
-                        }
-                        if unknown > 0 {
-                            count_parts.push(format!("{} ?", unknown));
-                        }
-
-                        spans.push(Span::styled(
-                            format!("{}  ", padding.chars().take(padding.len().saturating_sub(count_parts.join(", ").len())).collect::<String>()),
-                            Style::default().fg(Color::DarkGray),
-                        ));
-
-                        if online > 0 {
-                            spans.push(Span::styled(format!("{}", online), Style::default().fg(Color::Green)));
-                            if offline > 0 || unknown > 0 {
-                                spans.push(Span::styled("/", Style::default().fg(Color::DarkGray)));
-                            }
-                        }
-                        if offline > 0 {
-                            spans.push(Span::styled(format!("{}", offline), Style::default().fg(Color::Red)));
-                            if unknown > 0 {
-                                spans.push(Span::styled("/", Style::default().fg(Color::DarkGray)));
-                            }
-                        }
-                        if unknown > 0 {
-                            spans.push(Span::styled(format!("{}", unknown), Style::default().fg(Color::Yellow)));
-                        }
-
-                        Line::from(spans)
-                    }
-
-                    items.push(build_status_line("SSH Connections", "      ", ssh_online, ssh_offline, ssh_unknown));
-                    items.push(build_status_line("Docker Hosts", "         ", docker_online, docker_offline, docker_unknown));
-                    items.push(build_status_line("Coolify Instances", "    ", coolify_online, coolify_offline, coolify_unknown));
-                    items.push(build_status_line("Git Repositories", "     ", git_online, git_offline, git_unknown));
-
-                    items.push(Line::from(""));
-                    items.push(Line::from(Span::styled(
-                        "  ─────────────────────────────",
-                        Style::default().fg(Color::DarkGray),
-                    )));
-
-                    let total = ssh_total + docker_total + coolify_total + git_total;
-                    let total_online = ssh_online + docker_online + coolify_online + git_online;
-                    let total_offline = ssh_offline + docker_offline + coolify_offline + git_offline;
-
-                    if total == 0 {
-                        items.push(Line::from(""));
-                        items.push(Line::from(Span::styled(
-                            "  No resources configured yet.",
-                            Style::default().fg(Color::DarkGray),
-                        )));
-                        items.push(Line::from(Span::styled(
-                            "  Use ↓ to navigate and add resources.",
-                            Style::default().fg(Color::Yellow),
-                        )));
-                    } else {
-                        items.push(Line::from(""));
-                        // Legend
-                        items.push(Line::from(vec![
-                            Span::styled("  ● ", Style::default().fg(Color::Green)),
-                            Span::styled("Online", Style::default().fg(Color::DarkGray)),
-                            Span::styled("  ● ", Style::default().fg(Color::Red)),
-                            Span::styled("Offline", Style::default().fg(Color::DarkGray)),
-                            Span::styled("  ● ", Style::default().fg(Color::Yellow)),
-                            Span::styled("Unknown", Style::default().fg(Color::DarkGray)),
-                        ]));
-                        items.push(Line::from(""));
-                        items.push(Line::from(vec![
-                            Span::styled("  Total: ", Style::default().fg(Color::DarkGray)),
-                            Span::styled(format!("{}", total_online), Style::default().fg(Color::Green)),
-                            Span::styled(" online, ", Style::default().fg(Color::DarkGray)),
-                            Span::styled(format!("{}", total_offline), Style::default().fg(Color::Red)),
-                            Span::styled(" offline", Style::default().fg(Color::DarkGray)),
-                        ]));
-                    }
-
-                    Paragraph::new(items)
-                }
-                SelectedPanel::Ssh => {
-                    let items: Vec<Line> = if app.config.ssh_connections.is_empty() {
-                        vec![
+                        let mut items: Vec<Line> = vec![
                             Line::from(""),
                             Line::from(Span::styled(
-                                "  No SSH connections configured",
+                                "  Overview",
+                                Style::default()
+                                    .fg(Color::White)
+                                    .add_modifier(Modifier::BOLD),
+                            )),
+                            Line::from(Span::styled(
+                                "  Press 'r' to refresh status",
                                 Style::default().fg(Color::DarkGray),
                             )),
                             Line::from(""),
-                            Line::from(Span::styled(
-                                "  Add with: pctrl ssh add <name> <host> <user>",
-                                Style::default().fg(Color::Yellow),
-                            )),
-                        ]
-                    } else {
-                        app.config
-                            .ssh_connections
-                            .iter()
-                            .map(|conn| {
-                                Line::from(vec![
-                                    Span::styled("  ● ", Style::default().fg(Color::Green)),
-                                    Span::styled(&conn.name, Style::default().fg(Color::Cyan)),
-                                    Span::raw(" - "),
+                        ];
+
+                        // Helper to build status line
+                        fn build_status_line(
+                            name: &str,
+                            padding: &str,
+                            online: usize,
+                            offline: usize,
+                            unknown: usize,
+                        ) -> Line<'static> {
+                            let total = online + offline + unknown;
+                            if total == 0 {
+                                return Line::from(vec![
+                                    Span::styled("  ○ ", Style::default().fg(Color::DarkGray)),
                                     Span::styled(
-                                        format!("{}@{}:{}", conn.username, conn.host, conn.port),
+                                        name.to_string(),
                                         Style::default().fg(Color::White),
                                     ),
-                                ])
-                            })
-                            .collect()
-                    };
-                    Paragraph::new(items)
-                }
-                SelectedPanel::Docker => {
-                    let items: Vec<Line> = if app.config.docker_hosts.is_empty() {
-                        vec![
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  No Docker hosts configured",
+                                    Span::styled(
+                                        format!("{}{}", padding, 0),
+                                        Style::default().fg(Color::DarkGray),
+                                    ),
+                                ]);
+                            }
+
+                            let mut spans = vec![Span::raw("  ")];
+
+                            // Show icons for each status
+                            if online > 0 {
+                                spans.push(Span::styled("●", Style::default().fg(Color::Green)));
+                            }
+                            if offline > 0 {
+                                spans.push(Span::styled("●", Style::default().fg(Color::Red)));
+                            }
+                            if unknown > 0 && online == 0 && offline == 0 {
+                                spans.push(Span::styled("●", Style::default().fg(Color::Yellow)));
+                            }
+                            spans.push(Span::raw(" "));
+
+                            spans.push(Span::styled(
+                                name.to_string(),
+                                Style::default().fg(Color::White),
+                            ));
+
+                            // Build count display
+                            let mut count_parts = Vec::new();
+                            if online > 0 {
+                                count_parts.push(format!("{} online", online));
+                            }
+                            if offline > 0 {
+                                count_parts.push(format!("{} offline", offline));
+                            }
+                            if unknown > 0 {
+                                count_parts.push(format!("{} ?", unknown));
+                            }
+
+                            spans.push(Span::styled(
+                                format!(
+                                    "{}  ",
+                                    padding
+                                        .chars()
+                                        .take(
+                                            padding
+                                                .len()
+                                                .saturating_sub(count_parts.join(", ").len())
+                                        )
+                                        .collect::<String>()
+                                ),
                                 Style::default().fg(Color::DarkGray),
-                            )),
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  Add with: pctrl docker add <name> <url>",
-                                Style::default().fg(Color::Yellow),
-                            )),
-                        ]
-                    } else {
-                        app.config
-                            .docker_hosts
-                            .iter()
-                            .map(|host| {
-                                Line::from(vec![
-                                    Span::styled("  ● ", Style::default().fg(Color::Blue)),
-                                    Span::styled(&host.name, Style::default().fg(Color::Cyan)),
-                                    Span::raw(" - "),
-                                    Span::styled(&host.url, Style::default().fg(Color::White)),
-                                ])
-                            })
-                            .collect()
-                    };
-                    Paragraph::new(items)
-                }
-                SelectedPanel::Coolify => {
-                    let items: Vec<Line> = if app.config.coolify_instances.is_empty() {
-                        vec![
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  No Coolify instances configured",
+                            ));
+
+                            if online > 0 {
+                                spans.push(Span::styled(
+                                    format!("{}", online),
+                                    Style::default().fg(Color::Green),
+                                ));
+                                if offline > 0 || unknown > 0 {
+                                    spans.push(Span::styled(
+                                        "/",
+                                        Style::default().fg(Color::DarkGray),
+                                    ));
+                                }
+                            }
+                            if offline > 0 {
+                                spans.push(Span::styled(
+                                    format!("{}", offline),
+                                    Style::default().fg(Color::Red),
+                                ));
+                                if unknown > 0 {
+                                    spans.push(Span::styled(
+                                        "/",
+                                        Style::default().fg(Color::DarkGray),
+                                    ));
+                                }
+                            }
+                            if unknown > 0 {
+                                spans.push(Span::styled(
+                                    format!("{}", unknown),
+                                    Style::default().fg(Color::Yellow),
+                                ));
+                            }
+
+                            Line::from(spans)
+                        }
+
+                        items.push(build_status_line(
+                            "SSH Connections",
+                            "      ",
+                            ssh_online,
+                            ssh_offline,
+                            ssh_unknown,
+                        ));
+                        items.push(build_status_line(
+                            "Docker Hosts",
+                            "         ",
+                            docker_online,
+                            docker_offline,
+                            docker_unknown,
+                        ));
+                        items.push(build_status_line(
+                            "Coolify Instances",
+                            "    ",
+                            coolify_online,
+                            coolify_offline,
+                            coolify_unknown,
+                        ));
+                        items.push(build_status_line(
+                            "Git Repositories",
+                            "     ",
+                            git_online,
+                            git_offline,
+                            git_unknown,
+                        ));
+
+                        items.push(Line::from(""));
+                        items.push(Line::from(Span::styled(
+                            "  ─────────────────────────────",
+                            Style::default().fg(Color::DarkGray),
+                        )));
+
+                        let total = ssh_total + docker_total + coolify_total + git_total;
+                        let total_online = ssh_online + docker_online + coolify_online + git_online;
+                        let total_offline =
+                            ssh_offline + docker_offline + coolify_offline + git_offline;
+
+                        if total == 0 {
+                            items.push(Line::from(""));
+                            items.push(Line::from(Span::styled(
+                                "  No resources configured yet.",
                                 Style::default().fg(Color::DarkGray),
-                            )),
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  Add with: pctrl coolify add <name> <url> <token>",
+                            )));
+                            items.push(Line::from(Span::styled(
+                                "  Use ↓ to navigate and add resources.",
                                 Style::default().fg(Color::Yellow),
-                            )),
-                        ]
-                    } else {
-                        app.config
-                            .coolify_instances
-                            .iter()
-                            .map(|instance| {
-                                Line::from(vec![
-                                    Span::styled("  ● ", Style::default().fg(Color::Magenta)),
-                                    Span::styled(&instance.name, Style::default().fg(Color::Cyan)),
-                                    Span::raw(" - "),
-                                    Span::styled(&instance.url, Style::default().fg(Color::White)),
-                                ])
-                            })
-                            .collect()
-                    };
-                    Paragraph::new(items)
+                            )));
+                        } else {
+                            items.push(Line::from(""));
+                            // Legend
+                            items.push(Line::from(vec![
+                                Span::styled("  ● ", Style::default().fg(Color::Green)),
+                                Span::styled("Online", Style::default().fg(Color::DarkGray)),
+                                Span::styled("  ● ", Style::default().fg(Color::Red)),
+                                Span::styled("Offline", Style::default().fg(Color::DarkGray)),
+                                Span::styled("  ● ", Style::default().fg(Color::Yellow)),
+                                Span::styled("Unknown", Style::default().fg(Color::DarkGray)),
+                            ]));
+                            items.push(Line::from(""));
+                            items.push(Line::from(vec![
+                                Span::styled("  Total: ", Style::default().fg(Color::DarkGray)),
+                                Span::styled(
+                                    format!("{}", total_online),
+                                    Style::default().fg(Color::Green),
+                                ),
+                                Span::styled(" online, ", Style::default().fg(Color::DarkGray)),
+                                Span::styled(
+                                    format!("{}", total_offline),
+                                    Style::default().fg(Color::Red),
+                                ),
+                                Span::styled(" offline", Style::default().fg(Color::DarkGray)),
+                            ]));
+                        }
+
+                        Paragraph::new(items)
+                    }
+                    SelectedPanel::Ssh => {
+                        let items: Vec<Line> = if app.config.ssh_connections.is_empty() {
+                            vec![
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  No SSH connections configured",
+                                    Style::default().fg(Color::DarkGray),
+                                )),
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  Add with: pctrl ssh add <name> <host> <user>",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                            ]
+                        } else {
+                            app.config
+                                .ssh_connections
+                                .iter()
+                                .map(|conn| {
+                                    Line::from(vec![
+                                        Span::styled("  ● ", Style::default().fg(Color::Green)),
+                                        Span::styled(&conn.name, Style::default().fg(Color::Cyan)),
+                                        Span::raw(" - "),
+                                        Span::styled(
+                                            format!(
+                                                "{}@{}:{}",
+                                                conn.username, conn.host, conn.port
+                                            ),
+                                            Style::default().fg(Color::White),
+                                        ),
+                                    ])
+                                })
+                                .collect()
+                        };
+                        Paragraph::new(items)
+                    }
+                    SelectedPanel::Docker => {
+                        let items: Vec<Line> = if app.config.docker_hosts.is_empty() {
+                            vec![
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  No Docker hosts configured",
+                                    Style::default().fg(Color::DarkGray),
+                                )),
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  Add with: pctrl docker add <name> <url>",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                            ]
+                        } else {
+                            app.config
+                                .docker_hosts
+                                .iter()
+                                .map(|host| {
+                                    Line::from(vec![
+                                        Span::styled("  ● ", Style::default().fg(Color::Blue)),
+                                        Span::styled(&host.name, Style::default().fg(Color::Cyan)),
+                                        Span::raw(" - "),
+                                        Span::styled(&host.url, Style::default().fg(Color::White)),
+                                    ])
+                                })
+                                .collect()
+                        };
+                        Paragraph::new(items)
+                    }
+                    SelectedPanel::Coolify => {
+                        let items: Vec<Line> = if app.config.coolify_instances.is_empty() {
+                            vec![
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  No Coolify instances configured",
+                                    Style::default().fg(Color::DarkGray),
+                                )),
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  Add with: pctrl coolify add <name> <url> <token>",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                            ]
+                        } else {
+                            app.config
+                                .coolify_instances
+                                .iter()
+                                .map(|instance| {
+                                    Line::from(vec![
+                                        Span::styled("  ● ", Style::default().fg(Color::Magenta)),
+                                        Span::styled(
+                                            &instance.name,
+                                            Style::default().fg(Color::Cyan),
+                                        ),
+                                        Span::raw(" - "),
+                                        Span::styled(
+                                            &instance.url,
+                                            Style::default().fg(Color::White),
+                                        ),
+                                    ])
+                                })
+                                .collect()
+                        };
+                        Paragraph::new(items)
+                    }
+                    SelectedPanel::Git => {
+                        let items: Vec<Line> = if app.config.git_repos.is_empty() {
+                            vec![
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  No Git repositories configured",
+                                    Style::default().fg(Color::DarkGray),
+                                )),
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  Add with: pctrl git add <name> <path>",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                            ]
+                        } else {
+                            app.config
+                                .git_repos
+                                .iter()
+                                .map(|repo| {
+                                    Line::from(vec![
+                                        Span::styled("  ● ", Style::default().fg(Color::Yellow)),
+                                        Span::styled(&repo.name, Style::default().fg(Color::Cyan)),
+                                        Span::raw(" - "),
+                                        Span::styled(&repo.path, Style::default().fg(Color::White)),
+                                    ])
+                                })
+                                .collect()
+                        };
+                        Paragraph::new(items)
+                    }
                 }
-                SelectedPanel::Git => {
-                    let items: Vec<Line> = if app.config.git_repos.is_empty() {
-                        vec![
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  No Git repositories configured",
-                                Style::default().fg(Color::DarkGray),
-                            )),
-                            Line::from(""),
-                            Line::from(Span::styled(
-                                "  Add with: pctrl git add <name> <path>",
-                                Style::default().fg(Color::Yellow),
-                            )),
-                        ]
-                    } else {
-                        app.config
-                            .git_repos
-                            .iter()
-                            .map(|repo| {
-                                Line::from(vec![
-                                    Span::styled("  ● ", Style::default().fg(Color::Yellow)),
-                                    Span::styled(&repo.name, Style::default().fg(Color::Cyan)),
-                                    Span::raw(" - "),
-                                    Span::styled(&repo.path, Style::default().fg(Color::White)),
-                                ])
-                            })
-                            .collect()
-                    };
-                    Paragraph::new(items)
-                }
-            }
-            }  // close the else block
+            } // close the else block
             .block(
                 Block::default()
                     .title(format!(
@@ -731,8 +834,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                 Line::from(spans)
             };
 
-            let footer = Paragraph::new(footer_content)
-            .block(
+            let footer = Paragraph::new(footer_content).block(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::DarkGray)),
@@ -794,18 +896,20 @@ async fn run_app<B: ratatui::backend::Backend>(
                                 // Next field
                                 let count = app.field_count();
                                 if count > 0 {
-                                    app.input_form.current_field = (app.input_form.current_field + 1) % count;
+                                    app.input_form.current_field =
+                                        (app.input_form.current_field + 1) % count;
                                 }
                             }
                             KeyCode::BackTab => {
                                 // Previous field
                                 let count = app.field_count();
                                 if count > 0 {
-                                    app.input_form.current_field = if app.input_form.current_field == 0 {
-                                        count - 1
-                                    } else {
-                                        app.input_form.current_field - 1
-                                    };
+                                    app.input_form.current_field =
+                                        if app.input_form.current_field == 0 {
+                                            count - 1
+                                        } else {
+                                            app.input_form.current_field - 1
+                                        };
                                 }
                             }
                             KeyCode::Enter => {
@@ -888,7 +992,10 @@ async fn save_new_entry(app: &mut App) -> anyhow::Result<()> {
             app.docker_status.insert(id, ConnectionStatus::Unknown);
         }
         SelectedPanel::Coolify => {
-            if app.input_form.name.is_empty() || app.input_form.url.is_empty() || app.input_form.token.is_empty() {
+            if app.input_form.name.is_empty()
+                || app.input_form.url.is_empty()
+                || app.input_form.token.is_empty()
+            {
                 anyhow::bail!("Name, URL, and Token are required");
             }
 
