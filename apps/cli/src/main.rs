@@ -241,9 +241,10 @@ async fn main() -> anyhow::Result<()> {
                 );
                 println!();
                 println!(
-                    "  {}Use {} for available commands{}",
+                    "  {}Use {}pctrl --help{} for available commands{}",
                     style::DIM,
-                    format!("{}pctrl --help{}", style::CYAN, style::DIM),
+                    style::CYAN,
+                    style::DIM,
                     style::RESET
                 );
                 println!();
