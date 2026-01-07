@@ -21,8 +21,8 @@ fn default_db_path() -> PathBuf {
 #[command(about = "Mission Control for Self-Hosters & Indie Devs", long_about = None)]
 #[command(version)]
 struct Cli {
-    /// Operation mode
-    #[arg(short, long, value_enum, default_value = "cli")]
+    /// Operation mode (default: tui for interactive mode, use -m cli for single commands)
+    #[arg(short, long, value_enum, default_value = "tui")]
     mode: CliMode,
 
     /// Database path (default: ~/.local/share/pctrl/pctrl.db)
@@ -218,11 +218,14 @@ async fn main() -> anyhow::Result<()> {
     // ─────────────────────────────────────────────────────────────────────────
     // 3. Mode auswählen
     // ─────────────────────────────────────────────────────────────────────────
-    match mode {
-        Mode::Cli => {
-            if let Some(command) = cli.command {
-                cli::handle_command(command, config.clone(), db.clone()).await?;
-            } else {
+
+    // If a subcommand is provided, always use CLI mode to handle it
+    if let Some(command) = cli.command {
+        cli::handle_command(command, config.clone(), db.clone()).await?;
+    } else {
+        // No subcommand - use the specified mode (default: TUI)
+        match mode {
+            Mode::Cli => {
                 // Styled status display
                 style::print_banner(env!("CARGO_PKG_VERSION"));
 
@@ -249,13 +252,13 @@ async fn main() -> anyhow::Result<()> {
                 );
                 println!();
             }
-        }
-        Mode::Tui => {
-            tui::run(config.clone(), db.clone()).await?;
-        }
-        Mode::Gui => {
-            println!("GUI mode requires the desktop application (Tauri)");
-            println!("Run: cd apps/desktop && npm run tauri dev");
+            Mode::Tui => {
+                tui::run(config.clone(), db.clone()).await?;
+            }
+            Mode::Gui => {
+                println!("GUI mode requires the desktop application (Tauri)");
+                println!("Run: cd apps/desktop && npm run tauri dev");
+            }
         }
     }
 
