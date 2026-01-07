@@ -117,7 +117,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                 .split(chunks[1]);
 
             // Sidebar Menu
-            let menu_items: Vec<ListItem> = vec![
+            let menu_items: Vec<ListItem> = [
                 ("SSH", app.config.ssh_connections.len(), SelectedPanel::Ssh),
                 (
                     "Docker",
@@ -144,7 +144,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                 let prefix = if is_selected { "▶ " } else { "  " };
                 ListItem::new(Line::from(vec![
                     Span::styled(prefix, style),
-                    Span::styled(format!("{}", name), style),
+                    Span::styled((*name).to_string(), style),
                     Span::styled(
                         format!(" ({})", count),
                         Style::default().fg(Color::DarkGray),

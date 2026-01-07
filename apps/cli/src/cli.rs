@@ -202,7 +202,7 @@ async fn handle_docker_command(
                     println!(
                         "  {} [{}] {} - {}",
                         state_icon,
-                        container.id[..12].to_string(),
+                        &container.id[..12],
                         container.name,
                         container.image
                     );
