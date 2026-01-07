@@ -97,7 +97,10 @@ async fn get_config(state: State<'_, AppState>) -> Result<Config, String> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn add_ssh(state: State<'_, AppState>, data: SshConnectionDto) -> Result<SshConnection, String> {
+async fn add_ssh(
+    state: State<'_, AppState>,
+    data: SshConnectionDto,
+) -> Result<SshConnection, String> {
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
@@ -121,14 +124,21 @@ async fn add_ssh(state: State<'_, AppState>, data: SshConnectionDto) -> Result<S
 }
 
 #[tauri::command]
-async fn update_ssh(state: State<'_, AppState>, data: SshConnectionDto) -> Result<SshConnection, String> {
+async fn update_ssh(
+    state: State<'_, AppState>,
+    data: SshConnectionDto,
+) -> Result<SshConnection, String> {
     let id = data.id.clone().ok_or("ID is required for update")?;
 
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
 
-    if !db.ssh_connection_exists(&id).await.map_err(|e| e.to_string())? {
+    if !db
+        .ssh_connection_exists(&id)
+        .await
+        .map_err(|e| e.to_string())?
+    {
         return Err(format!("SSH connection with id '{}' not found", id));
     }
 
@@ -173,7 +183,9 @@ async fn add_docker(state: State<'_, AppState>, data: DockerHostDto) -> Result<D
     let host = DockerHost {
         id: data.id.unwrap_or_else(|| Uuid::new_v4().to_string()),
         name: data.name,
-        url: data.url.unwrap_or_else(|| "unix:///var/run/docker.sock".to_string()),
+        url: data
+            .url
+            .unwrap_or_else(|| "unix:///var/run/docker.sock".to_string()),
     };
 
     db.save_docker_host(&host)
@@ -184,21 +196,30 @@ async fn add_docker(state: State<'_, AppState>, data: DockerHostDto) -> Result<D
 }
 
 #[tauri::command]
-async fn update_docker(state: State<'_, AppState>, data: DockerHostDto) -> Result<DockerHost, String> {
+async fn update_docker(
+    state: State<'_, AppState>,
+    data: DockerHostDto,
+) -> Result<DockerHost, String> {
     let id = data.id.clone().ok_or("ID is required for update")?;
 
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
 
-    if !db.docker_host_exists(&id).await.map_err(|e| e.to_string())? {
+    if !db
+        .docker_host_exists(&id)
+        .await
+        .map_err(|e| e.to_string())?
+    {
         return Err(format!("Docker host with id '{}' not found", id));
     }
 
     let host = DockerHost {
         id,
         name: data.name,
-        url: data.url.unwrap_or_else(|| "unix:///var/run/docker.sock".to_string()),
+        url: data
+            .url
+            .unwrap_or_else(|| "unix:///var/run/docker.sock".to_string()),
     };
 
     db.save_docker_host(&host)
@@ -213,9 +234,7 @@ async fn delete_docker(state: State<'_, AppState>, id: String) -> Result<bool, S
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.remove_docker_host(&id)
-        .await
-        .map_err(|e| e.to_string())
+    db.remove_docker_host(&id).await.map_err(|e| e.to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,7 +242,10 @@ async fn delete_docker(state: State<'_, AppState>, id: String) -> Result<bool, S
 // ─────────────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn add_coolify(state: State<'_, AppState>, data: CoolifyInstanceDto) -> Result<CoolifyInstance, String> {
+async fn add_coolify(
+    state: State<'_, AppState>,
+    data: CoolifyInstanceDto,
+) -> Result<CoolifyInstance, String> {
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
@@ -243,14 +265,21 @@ async fn add_coolify(state: State<'_, AppState>, data: CoolifyInstanceDto) -> Re
 }
 
 #[tauri::command]
-async fn update_coolify(state: State<'_, AppState>, data: CoolifyInstanceDto) -> Result<CoolifyInstance, String> {
+async fn update_coolify(
+    state: State<'_, AppState>,
+    data: CoolifyInstanceDto,
+) -> Result<CoolifyInstance, String> {
     let id = data.id.clone().ok_or("ID is required for update")?;
 
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
 
-    if !db.coolify_instance_exists(&id).await.map_err(|e| e.to_string())? {
+    if !db
+        .coolify_instance_exists(&id)
+        .await
+        .map_err(|e| e.to_string())?
+    {
         return Err(format!("Coolify instance with id '{}' not found", id));
     }
 
@@ -295,9 +324,7 @@ async fn add_git(state: State<'_, AppState>, data: GitRepoDto) -> Result<GitRepo
         remote_url: data.remote_url,
     };
 
-    db.save_git_repo(&repo)
-        .await
-        .map_err(|e| e.to_string())?;
+    db.save_git_repo(&repo).await.map_err(|e| e.to_string())?;
 
     Ok(repo)
 }
@@ -321,9 +348,7 @@ async fn update_git(state: State<'_, AppState>, data: GitRepoDto) -> Result<GitR
         remote_url: data.remote_url,
     };
 
-    db.save_git_repo(&repo)
-        .await
-        .map_err(|e| e.to_string())?;
+    db.save_git_repo(&repo).await.map_err(|e| e.to_string())?;
 
     Ok(repo)
 }
@@ -333,9 +358,7 @@ async fn delete_git(state: State<'_, AppState>, id: String) -> Result<bool, Stri
     ensure_db(&state).await?;
     let db_guard = state.db.lock().await;
     let db = db_guard.as_ref().ok_or("Database not initialized")?;
-    db.remove_git_repo(&id)
-        .await
-        .map_err(|e| e.to_string())
+    db.remove_git_repo(&id).await.map_err(|e| e.to_string())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
