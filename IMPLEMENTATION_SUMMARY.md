@@ -2,184 +2,277 @@
 
 ## Overview
 
-Successfully implemented **pctrl** - a complete DevOps control center for indie developers and self-hosters from scratch. The project includes a full monorepo with multiple applications and a modular architecture.
+**pctrl** (pilotCtrl) - A complete DevOps control center for indie developers and self-hosters. The project follows a **project-centric architecture** (MASTERPLAN v6) where projects are the core organizing entity.
+
+## Current State: MASTERPLAN v6 Implemented
+
+### Phase 1: Foundation (Completed)
+- Monorepo structure with Rust workspace
+- Core types and configuration system
+- Encrypted SQLite database (AES-256-GCM)
+- CLI, TUI, and GUI scaffolds
+- SSH, Docker, Coolify, Git integrations
+
+### Phase 2: Project Registry (Completed)
+- **Project-centric data model**
+- Extended database schema with 8 new tables
+- Full CRUD operations for all entities
+- Project-resource linking system
+- TUI with Project View
 
 ## What Was Built
 
 ### 1. Core Infrastructure (Rust)
-- **6 Rust crates** implementing the core functionality:
-  - `pctrl-core`: Common types, configuration, error handling
-  - `pctrl-database`: Encrypted SQLite database with AES-256-GCM
-  - `pctrl-ssh`: SSH connection management (public key authentication)
-  - `pctrl-docker`: Docker container management via bollard
-  - `pctrl-coolify`: Coolify API client for deployments
-  - `pctrl-git`: Git operations and release management
 
-### 2. Applications
+**6 Rust crates** implementing the core functionality:
 
-#### CLI/TUI Application (Rust)
-- **CLI mode** using clap for command-line interface
-- **TUI mode** using ratatui for terminal user interface
-- Fully functional with subcommands for all features
-- Built and tested successfully
+| Crate | Description |
+|-------|-------------|
+| `pctrl-core` | Types: Project, Server, Domain, DatabaseCredentials, Container, Script, ProjectResource |
+| `pctrl-database` | Encrypted SQLite with CRUD for all entities |
+| `pctrl-ssh` | SSH connection management |
+| `pctrl-docker` | Docker container management via bollard |
+| `pctrl-coolify` | Coolify API client |
+| `pctrl-git` | Git operations and release management |
 
-#### Desktop GUI (Tauri + React)
-- Tauri backend integrated with core Rust crates
-- React frontend with modern UI
-- Vite build configuration
-- TypeScript for type safety
-- Structure ready for development (requires system libraries to build)
+### 2. Data Model (v6)
 
-#### Landing Page (Astro)
-- Static site generator setup
-- Feature showcase
-- Roadmap and changelog sections
-- Responsive design
-- Auto-sync capability via scripts
+```
+┌─────────────────────────────────────────────┐
+│                 PROJECTS                     │
+│  (Central organizing entity)                 │
+│  - name, description, stack[], status        │
+│  - Status: Dev | Staging | Live | Archived   │
+└─────────────────────┬───────────────────────┘
+                      │
+          ┌───────────┴───────────┐
+          │   project_resources   │
+          │   (Many-to-Many)      │
+          └───────────┬───────────┘
+                      │
+  ┌───────┬───────┬───┴───┬───────┬───────┐
+  ▼       ▼       ▼       ▼       ▼       ▼
+Server  Container Database Domain  Git   Script
+```
 
-#### Mobile App (Expo + React Native)
-- Complete project structure
-- React Native UI components
-- Ready for development
-- Support for iOS and Android
+### 3. Database Schema
 
-### 3. Documentation
+**8 new tables added:**
 
-Created comprehensive documentation:
-- **README.md**: Full project overview with usage examples
-- **QUICKSTART.md**: Step-by-step guide for new users
-- **ARCHITECTURE.md**: Detailed system architecture
-- **CONTRIBUTING.md**: Guidelines for contributors
-- **config.example.yml**: Example configuration file
+```sql
+-- Core entities
+projects          -- Central project registry
+servers           -- VPS, dedicated, local servers
+domains           -- Domain names with DNS info
+databases         -- Database connection credentials
+containers        -- Docker container tracking
+scripts           -- Automation scripts
 
-### 4. Automation & CI/CD
+-- Relationships
+project_resources -- Links projects to resources
+discovery_cache   -- Auto-discovery suggestions (Phase 3)
+```
 
-- **GitHub Actions workflow**: Automated testing and building
-- **Sync script**: Auto-sync roadmap/changelog to website
-- **Turbo monorepo**: Efficient build caching
-- Code formatting and linting
+### 4. CLI Commands
 
-### 5. Testing
+**Project-Centric Commands:**
+```bash
+# Projects
+pctrl project list
+pctrl project add <name> [-d description] [-s stack] [--status dev|staging|live]
+pctrl project show <name>
+pctrl project remove <name>
+pctrl project link <project> <resource_type> <resource_id> [-r role]
+pctrl project unlink <project> <link_id>
 
-- Unit tests for core library (5 tests passing)
-- Test framework structure in place
-- Integration test examples
+# Servers
+pctrl server list
+pctrl server add <name> <host> [-t vps|dedicated|local] [-p provider]
+pctrl server show <name>
+pctrl server remove <name>
 
-### 6. Security
+# Domains
+pctrl domain list
+pctrl domain add <name> [-t root|subdomain|wildcard] [-s server]
+pctrl domain show <name>
+pctrl domain remove <name>
 
-Implemented robust security features:
+# Databases (with quick lookup)
+pctrl db list
+pctrl db add <name> -t postgres|mysql|mongodb|redis|sqlite
+pctrl db show <name>
+pctrl db get <name> <field>    # Quick lookup: pctrl db get mydb user
+pctrl db remove <name>
+
+# Scripts
+pctrl script list
+pctrl script add <name> -t deploy|backup|health-check|custom [-p project]
+pctrl script show <name>
+pctrl script remove <name>
+```
+
+**Legacy Commands (still available):**
+```bash
+pctrl ssh list|add|remove|connect
+pctrl docker list|start|stop|logs
+pctrl coolify list|deploy
+pctrl git status|release
+```
+
+### 5. TUI with Project View
+
+The TUI now includes a **Projects panel**:
+
+```
+┌─ pctrl ─────────────────────────────────────────────────────┐
+│ Mission Control for Self-Hosters & Indie Devs              │
+├─────────────┬───────────────────────────────────────────────┤
+│ ▶ Status    │                                               │
+│   Projects  │  ● finanzapp (live) [rust, tauri]            │
+│   SSH       │  ● blog (dev) [astro]                        │
+│   Docker    │  ● api-gateway (staging) [go, docker]        │
+│   Coolify   │                                               │
+│   Git       │  Press 'a' to add a project                  │
+├─────────────┴───────────────────────────────────────────────┤
+│ ↑↓ Navigate  │  a Add  │  r Refresh  │  q Quit             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Status colors:**
+- 🟡 Yellow: Dev
+- 🔵 Blue: Staging
+- 🟢 Green: Live
+- ⚫ Gray: Archived
+
+### 6. Applications
+
+| Application | Status | Description |
+|-------------|--------|-------------|
+| CLI/TUI | ✅ Complete | Rust, clap, ratatui |
+| Desktop GUI | 🔄 Scaffold | Tauri + React |
+| Landing Page | ✅ Complete | Astro |
+| Mobile App | 🔄 Scaffold | Expo + React Native |
+
+### 7. Security
+
 - AES-256-GCM encryption for database
 - Argon2 key derivation
 - Cryptographically secure random nonces
-- Proper salt management
-- Security warnings in documentation
+- Secure credential storage
 
 ## Statistics
 
-- **37 source files** created
-- **~1,523 lines** of code (Rust + TypeScript)
+- **~50+ source files** created
 - **6 Rust crates** with clear separation of concerns
 - **4 applications** in the monorepo
 - **3 operational modes** (CLI, TUI, GUI)
-- **4 integration types** (SSH, Docker, Coolify, Git)
+- **8 entity types** (Project, Server, Domain, Database, Container, Script, ProjectResource, Config)
+- **5 integration types** (SSH, Docker, Coolify, Git, Database)
 
 ## Key Features Implemented
 
-### ✅ Three Operational Modes
-1. **CLI**: Command-line interface with clap
-2. **TUI**: Terminal UI with ratatui
-3. **GUI**: Desktop app with Tauri + React
+### Project Management
+- [x] Create, list, show, remove projects
+- [x] Project status tracking (dev/staging/live/archived)
+- [x] Stack tagging (e.g., "rust, tauri, react")
+- [x] Project-resource linking
 
-### ✅ Management Capabilities
-1. **SSH Connections**: Public key authentication
-2. **Docker Containers**: List, start, stop containers
-3. **Coolify Deployments**: List and deploy projects
-4. **Git Releases**: Create tags and push to remote
+### Server Management
+- [x] Server registry with types (vps, dedicated, local)
+- [x] Provider tracking (hetzner, digitalocean, etc.)
+- [x] SSH connection linking
+- [x] Server specs storage
 
-### ✅ Data Management
-1. **Encrypted Database**: SQLite with AES-256-GCM
-2. **Configuration**: YAML-based configuration
-3. **Local-first**: All data stored locally
+### Domain Management
+- [x] Domain registry
+- [x] Domain types (root, subdomain, wildcard)
+- [x] Server association
 
-### ✅ Developer Experience
-1. **Comprehensive docs**: README, quickstart, architecture
-2. **Example config**: Complete example configuration
-3. **CI/CD**: GitHub Actions workflow
-4. **Monorepo**: Turborepo for efficient builds
-5. **Type safety**: TypeScript and Rust
+### Database Credentials
+- [x] Secure credential storage
+- [x] Multiple database types (postgres, mysql, mongodb, redis, sqlite)
+- [x] Quick field lookup (`pctrl db get mydb password`)
+- [x] Container association
+
+### Script Management
+- [x] Script registry
+- [x] Script types (deploy, backup, health-check, custom)
+- [x] Project association
+
+### TUI Enhancements
+- [x] Projects panel with status indicators
+- [x] Add project form
+- [x] Status-colored display
+- [x] Navigation including Projects
 
 ## Testing Results
 
-All implemented features have been tested:
+```
+✅ cargo check --package pctrl-cli    # Compiles successfully
+✅ cargo check --package pctrl-core   # Compiles successfully
+✅ cargo check --package pctrl-database # Compiles successfully
+✅ All entity types serialize/deserialize correctly
+✅ Database CRUD operations work
+✅ CLI commands parse correctly
+✅ TUI renders Projects panel
+```
 
-✅ CLI application builds successfully
-✅ CLI help commands work correctly
-✅ CLI subcommands execute properly
-✅ TUI launches and displays correctly
-✅ Core library tests pass (5/5)
-✅ No compiler warnings
-✅ Code is properly formatted
+## What's Next
 
-## Security Improvements Made
+### Phase 3: Auto-Discovery (Planned)
+- DNS lookup for domains
+- Port scanning for services
+- Docker container inspection
+- Environment variable extraction
+- Coolify project sync
 
-During code review, identified and fixed:
-1. ✅ Static nonce vulnerability → Now using random nonces
-2. ✅ Random salt generation → Now using consistent salt
-3. ✅ Weak RNG → Now using cryptographically secure OsRng
-4. ✅ Added security warnings in documentation
-5. ✅ Improved error messages for unimplemented features
+### Phase 4: Infrastructure View (Planned)
+- Server-centric view
+- Real-time metrics
+- Container logs
+- Health monitoring
 
-## Architecture Highlights
+### Phase 5: Desktop App (Planned)
+- Tauri commands for all entities
+- React UI implementation
+- Dashboard with project overview
 
-### Modular Design
-- Clear separation between UI and business logic
-- Shared core library across all applications
-- Independent crates for each integration type
+## File Structure
 
-### Async/Await
-- Tokio runtime for async operations
-- Non-blocking I/O for SSH, Docker, HTTP
-
-### Type Safety
-- Rust's type system for compile-time safety
-- TypeScript for frontend type checking
-- Comprehensive error handling
-
-### Encryption
-- Database encryption at rest
-- Secure key derivation
-- Nonce management for AES-GCM
-
-## What's Ready for Production
-
-- ✅ Core library architecture
-- ✅ CLI and TUI applications
-- ✅ Database encryption
-- ✅ SSH public key authentication
-- ✅ Docker integration
-- ✅ Git operations
-- ✅ Coolify API client
-- ✅ Documentation
-- ✅ CI/CD pipeline
-
-## What Needs Further Development
-
-- 🔄 Password authentication for SSH
-- 🔄 Desktop app UI polish (requires system libs to test)
-- 🔄 Mobile app functionality
-- 🔄 Advanced Docker features (logs, stats, etc.)
-- 🔄 Cloud sync (optional feature)
-- 🔄 Plugin system
-- 🔄 More comprehensive tests
+```
+pctrl/
+├── apps/
+│   ├── cli/src/
+│   │   ├── main.rs     # CLI commands (project, server, domain, db, script)
+│   │   ├── cli.rs      # Command handlers
+│   │   └── tui.rs      # TUI with Project View
+│   ├── desktop/        # Tauri + React
+│   ├── landing/        # Astro website
+│   └── mobile/         # Expo app
+│
+├── crates/
+│   ├── core/src/lib.rs      # All entity types
+│   ├── database/src/lib.rs  # CRUD + schema
+│   ├── ssh/
+│   ├── docker/
+│   ├── coolify/
+│   └── git/
+│
+├── ARCHITECTURE.md      # System architecture
+├── ROADMAP.md          # Development roadmap
+├── CONTRIBUTING.md     # Contribution guidelines
+└── IMPLEMENTATION_SUMMARY.md  # This file
+```
 
 ## Conclusion
 
-Successfully implemented a complete DevOps control center with:
-- Multiple applications and interfaces
-- Robust security features
-- Clean architecture
-- Comprehensive documentation
-- Working CI/CD pipeline
-- Test infrastructure
+Successfully implemented **MASTERPLAN v6** with:
 
-The project provides a solid foundation for managing SSH connections, Docker containers, Coolify deployments, and Git releases from a single unified interface with three different usage modes.
+- Project-centric architecture
+- Extended database schema
+- Full CRUD for all entities
+- Project-resource linking
+- TUI with Project View
+- CLI commands for all entity types
+
+The project provides a solid foundation for managing projects and infrastructure from a unified interface with project as the central organizing concept.

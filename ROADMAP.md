@@ -29,15 +29,84 @@
 
 ---
 
-## Phase 2: Enhanced Features 🚧 [current]
+## Phase 2: Project Registry ✅ [done]
 
-**Goal:** Improve usability and add advanced functionality
+**Goal:** Implement project-centric architecture (MASTERPLAN v6)
+
+### Core Data Model
+- ✅ Project entity as central organizing unit
+- ✅ Server entity with types (vps, dedicated, local)
+- ✅ Domain entity with types (root, subdomain, wildcard)
+- ✅ DatabaseCredentials entity with secure storage
+- ✅ Container entity for Docker tracking
+- ✅ Script entity for automation
+- ✅ ProjectResource linking (many-to-many)
+
+### Database Schema
+- ✅ projects table
+- ✅ servers table
+- ✅ domains table
+- ✅ databases table
+- ✅ containers table
+- ✅ scripts table
+- ✅ project_resources table
+- ✅ discovery_cache table (for Phase 3)
+
+### CLI Commands
+- ✅ `pctrl project` - list, add, show, remove, link, unlink
+- ✅ `pctrl server` - list, add, show, remove
+- ✅ `pctrl domain` - list, add, show, remove
+- ✅ `pctrl db` - list, add, show, get, remove
+- ✅ `pctrl script` - list, add, show, remove
+
+### TUI Enhancements
+- ✅ Projects panel in sidebar
+- ✅ Project listing with status indicators
+- ✅ Add project form
+- ✅ Status-colored display (dev/staging/live/archived)
+
+**Release:** v0.2.0
+
+---
+
+## Phase 3: Auto-Discovery 🚧 [current]
+
+**Goal:** Automatic detection and mapping of resources
+
+### Discovery Features
+- 📋 DNS lookup for domain verification
+- 📋 Port scanning for service detection
+- 📋 Docker container inspection
+- 📋 Environment variable extraction
+- 📋 Coolify project synchronization
+- 📋 Git remote linking
+
+### Discovery Workflow
+- 📋 `pctrl discover` command
+- 📋 Suggestion review interface
+- 📋 Auto-link confirmed resources
+- 📋 Discovery cache management
 
 ### CLI/TUI Improvements
 - 📋 Interactive configuration wizard
 - 📋 Colored output and progress indicators
 - 📋 Shell completion scripts (bash, zsh, fish)
 - 📋 Configuration file validation
+
+**Target Release:** v0.3.0
+
+---
+
+## Phase 4: Infrastructure View 📋 [planned]
+
+**Goal:** Server-centric management and monitoring
+
+### Infrastructure Dashboard
+- 📋 Server-grouped resource view
+- 📋 Real-time container status
+- 📋 Resource usage metrics (CPU, memory, disk)
+- 📋 Container logs viewing
+- 📋 Health check indicators
 
 ### SSH Enhancements
 - 📋 Password authentication support
@@ -51,8 +120,7 @@
 - 📋 Container statistics (CPU, memory, network)
 - 📋 Docker Compose support
 - 📋 Image management (pull, push, remove)
-- 📋 Volume management
-- 📋 Network management
+- 📋 Volume and network management
 
 ### Coolify Integration
 - 📋 Deployment status monitoring
@@ -60,35 +128,30 @@
 - 📋 Build logs viewing
 - 📋 Service configuration updates
 
-### Git Features
-- 📋 Automatic changelog generation
-- 📋 Release notes templating
-- 📋 GitHub/GitLab release creation
-- 📋 Multi-repository support
-
-**Target Release:** v0.2.0
+**Target Release:** v0.4.0
 
 ---
 
-## Phase 3: Desktop & Mobile 📋 [planned]
+## Phase 5: Desktop & Mobile 📋 [planned]
 
 **Goal:** Complete cross-platform experience
 
-### Desktop GUI
+### Desktop GUI (Tauri)
+- 📋 Tauri commands for all entities
 - 📋 Complete React UI implementation
-- 📋 Dashboard with overview widgets
+- 📋 Dashboard with project overview
 - 📋 Real-time updates and notifications
 - 📋 Theme support (light/dark mode)
 - 📋 Multi-window support
 - 📋 System tray integration
 - 📋 Keyboard shortcuts
 
-### Mobile App
+### Mobile App (Expo)
 - 📋 React Native implementation
 - 📋 Push notifications
 - 📋 Biometric authentication
 - 📋 Offline mode with sync
-- 📋 iOS app store release
+- 📋 iOS App Store release
 - 📋 Android Play Store release
 
 ### Landing Page
@@ -97,43 +160,66 @@
 - 📋 Documentation site integration
 - 📋 Community showcase
 
-**Target Release:** v0.3.0
+**Target Release:** v0.5.0
 
 ---
 
-## Phase 4: Advanced Management 📋 [planned]
+## Phase 6: Automation & Scripts 📋 [planned]
 
-**Goal:** Add monitoring, automation, and advanced features
+**Goal:** Script execution and automation features
 
-### Monitoring & Alerts
-- 📋 Real-time server monitoring
-- 📋 Container health checks
-- 📋 Resource usage alerts
-- 📋 Custom alert rules
-- 📋 Email/SMS/Slack notifications
-- 📋 Metrics dashboard
+### Script Execution
+- 📋 Run scripts via CLI/TUI/GUI
+- 📋 Script output capture
+- 📋 Exit code handling
+- 📋 Script variables and templating
 
 ### Automation
 - 📋 Task scheduling (cron-like)
 - 📋 Deployment pipelines
 - 📋 Automated backups
-- 📋 Script execution
 - 📋 Webhooks support
+
+### Git Features
+- 📋 Automatic changelog generation
+- 📋 Release notes templating
+- 📋 GitHub/GitLab release creation
+- 📋 Multi-repository support
+
+**Target Release:** v0.6.0
+
+---
+
+## Phase 7: Monitoring & Alerts 📋 [planned]
+
+**Goal:** Real-time monitoring and alerting
+
+### Monitoring
+- 📋 Real-time server monitoring
+- 📋 Container health checks
+- 📋 Resource usage alerts
+- 📋 Custom alert rules
+- 📋 Metrics dashboard
+
+### Notifications
+- 📋 Email notifications
+- 📋 SMS/Slack/Discord notifications
+- 📋 Push notifications (mobile)
+- 📋 Webhook integrations
 
 ### Security
 - 📋 Two-factor authentication
 - 📋 Role-based access control
 - 📋 Audit logging
-- 📋 Secret management integration (Vault, AWS Secrets Manager)
-- 📋 Security scanning integration
+- 📋 Secret management integration
 
-**Target Release:** v0.4.0
+**Target Release:** v0.7.0
 
 ---
 
-## Phase 5: Extensibility 📋 [planned]
+## Phase 8: Extensibility 📋 [planned]
 
-**Goal:** Plugin system and community integrations
+**Goal:** Plugin system and third-party integrations
 
 ### Plugin System
 - 📋 Plugin API design
@@ -156,11 +242,11 @@
 - 📋 CLI plugin system
 - 📋 SDK for other languages
 
-**Target Release:** v0.5.0
+**Target Release:** v0.8.0
 
 ---
 
-## Phase 6: Enterprise Features 📋 [planned]
+## Phase 9: Enterprise Features 📋 [planned]
 
 **Goal:** Team collaboration and enterprise-grade features
 
@@ -223,10 +309,11 @@ To suggest new features or changes to the roadmap:
 
 ## Release Schedule
 
-- **v0.1.x** - Monthly maintenance releases
-- **v0.2.0** - Q2 2026
-- **v0.3.0** - Q3 2026
-- **v0.4.0** - Q4 2026
-- **v1.0.0** - 2027
+- **v0.1.x** - Foundation (completed)
+- **v0.2.0** - Project Registry (completed)
+- **v0.3.0** - Auto-Discovery (Q1 2026)
+- **v0.4.0** - Infrastructure View (Q2 2026)
+- **v0.5.0** - Desktop & Mobile (Q3 2026)
+- **v1.0.0** - Enterprise (2027)
 
 *Note: This roadmap is subject to change based on community feedback and priorities.*

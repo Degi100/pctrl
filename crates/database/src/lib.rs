@@ -109,6 +109,150 @@ impl Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: PROJECTS (Core Entity)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS projects (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                stack TEXT,
+                status TEXT DEFAULT 'dev',
+                color TEXT,
+                icon TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: SERVERS (eigenständig, nicht nur SSH)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS servers (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                host TEXT NOT NULL,
+                server_type TEXT DEFAULT 'vps',
+                provider TEXT,
+                ssh_connection_id TEXT,
+                location TEXT,
+                specs TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ssh_connection_id) REFERENCES ssh_connections(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: DOMAINS
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS domains (
+                id TEXT PRIMARY KEY,
+                domain TEXT NOT NULL UNIQUE,
+                domain_type TEXT DEFAULT 'production',
+                ssl INTEGER DEFAULT 1,
+                ssl_expiry DATETIME,
+                cloudflare_zone_id TEXT,
+                cloudflare_record_id TEXT,
+                server_id TEXT,
+                container_id TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (server_id) REFERENCES servers(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: DATABASES (Credentials encrypted!)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS databases (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                db_type TEXT NOT NULL,
+                host TEXT,
+                port INTEGER,
+                database_name TEXT,
+                username TEXT,
+                password TEXT,
+                connection_string TEXT,
+                server_id TEXT,
+                container_id TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (server_id) REFERENCES servers(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: CONTAINERS (erweitert)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS containers (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                image TEXT,
+                server_id TEXT NOT NULL,
+                project_id TEXT,
+                status TEXT,
+                ports TEXT,
+                env_vars TEXT,
+                labels TEXT,
+                created_at DATETIME,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (server_id) REFERENCES servers(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: SCRIPTS (Custom Commands)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS scripts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                command TEXT NOT NULL,
+                script_type TEXT DEFAULT 'ssh',
+                server_id TEXT,
+                project_id TEXT,
+                dangerous INTEGER DEFAULT 0,
+                last_run DATETIME,
+                last_result TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (server_id) REFERENCES servers(id),
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: PROJECT_RESOURCES (Verknüpfungstabelle)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS project_resources (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                resource_type TEXT NOT NULL,
+                resource_id TEXT NOT NULL,
+                role TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects(id)
+            );
+
+            -- ═══════════════════════════════════════════════════════════════
+            -- v6: DISCOVERY_CACHE (für schnelle Refreshes)
+            -- ═══════════════════════════════════════════════════════════════
+
+            CREATE TABLE IF NOT EXISTS discovery_cache (
+                id TEXT PRIMARY KEY,
+                server_id TEXT NOT NULL,
+                data_type TEXT NOT NULL,
+                data TEXT NOT NULL,
+                fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME,
+                FOREIGN KEY (server_id) REFERENCES servers(id)
+            );
             "#,
         )
         .execute(&self.pool)
@@ -463,5 +607,778 @@ impl Database {
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: PROJECT METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Save a project
+    pub async fn save_project(&self, project: &pctrl_core::Project) -> Result<()> {
+        let stack = serde_json::to_string(&project.stack)
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        sqlx::query(
+            "INSERT OR REPLACE INTO projects (id, name, description, stack, status, color, icon, notes, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+        )
+        .bind(&project.id)
+        .bind(&project.name)
+        .bind(&project.description)
+        .bind(&stack)
+        .bind(project.status.to_string())
+        .bind(&project.color)
+        .bind(&project.icon)
+        .bind(&project.notes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get a project by ID
+    pub async fn get_project(&self, id: &str) -> Result<Option<pctrl_core::Project>> {
+        let row: Option<(String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, stack, status, color, icon, notes FROM projects WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, description, stack, status, color, icon, notes)) = row {
+            let stack: Vec<String> = stack
+                .map(|s| serde_json::from_str(&s).unwrap_or_default())
+                .unwrap_or_default();
+            let status = status.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::Project {
+                id,
+                name,
+                description,
+                stack,
+                status,
+                color,
+                icon,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get a project by name (case-insensitive)
+    pub async fn get_project_by_name(&self, name: &str) -> Result<Option<pctrl_core::Project>> {
+        let row: Option<(String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, stack, status, color, icon, notes FROM projects WHERE LOWER(name) = LOWER(?)")
+                .bind(name)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, description, stack, status, color, icon, notes)) = row {
+            let stack: Vec<String> = stack
+                .map(|s| serde_json::from_str(&s).unwrap_or_default())
+                .unwrap_or_default();
+            let status = status.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::Project {
+                id,
+                name,
+                description,
+                stack,
+                status,
+                color,
+                icon,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all projects
+    pub async fn list_projects(&self) -> Result<Vec<pctrl_core::Project>> {
+        let rows: Vec<(String, String, Option<String>, Option<String>, String, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, stack, status, color, icon, notes FROM projects ORDER BY name")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let projects = rows
+            .into_iter()
+            .map(|(id, name, description, stack, status, color, icon, notes)| {
+                let stack: Vec<String> = stack
+                    .map(|s| serde_json::from_str(&s).unwrap_or_default())
+                    .unwrap_or_default();
+                let status = status.parse().unwrap_or_default();
+
+                pctrl_core::Project {
+                    id,
+                    name,
+                    description,
+                    stack,
+                    status,
+                    color,
+                    icon,
+                    notes,
+                }
+            })
+            .collect();
+
+        Ok(projects)
+    }
+
+    /// Remove a project by ID
+    pub async fn remove_project(&self, id: &str) -> Result<bool> {
+        // Also remove all project_resources for this project
+        sqlx::query("DELETE FROM project_resources WHERE project_id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let result = sqlx::query("DELETE FROM projects WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if a project exists
+    pub async fn project_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM projects WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: SERVER METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Save a server
+    pub async fn save_server(&self, server: &pctrl_core::Server) -> Result<()> {
+        let specs = server.specs.as_ref()
+            .map(|s| serde_json::to_string(s).unwrap_or_default());
+
+        sqlx::query(
+            "INSERT OR REPLACE INTO servers (id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&server.id)
+        .bind(&server.name)
+        .bind(&server.host)
+        .bind(server.server_type.to_string())
+        .bind(&server.provider)
+        .bind(&server.ssh_connection_id)
+        .bind(&server.location)
+        .bind(&specs)
+        .bind(&server.notes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get a server by ID
+    pub async fn get_server(&self, id: &str) -> Result<Option<pctrl_core::Server>> {
+        let row: Option<(String, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)) = row {
+            let server_type = server_type.parse().unwrap_or_default();
+            let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
+
+            Ok(Some(pctrl_core::Server {
+                id,
+                name,
+                host,
+                server_type,
+                provider,
+                ssh_connection_id,
+                location,
+                specs,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get a server by name (case-insensitive)
+    pub async fn get_server_by_name(&self, name: &str) -> Result<Option<pctrl_core::Server>> {
+        let row: Option<(String, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers WHERE LOWER(name) = LOWER(?)")
+                .bind(name)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)) = row {
+            let server_type = server_type.parse().unwrap_or_default();
+            let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
+
+            Ok(Some(pctrl_core::Server {
+                id,
+                name,
+                host,
+                server_type,
+                provider,
+                ssh_connection_id,
+                location,
+                specs,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all servers
+    pub async fn list_servers(&self) -> Result<Vec<pctrl_core::Server>> {
+        let rows: Vec<(String, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers ORDER BY name")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let servers = rows
+            .into_iter()
+            .map(|(id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)| {
+                let server_type = server_type.parse().unwrap_or_default();
+                let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
+
+                pctrl_core::Server {
+                    id,
+                    name,
+                    host,
+                    server_type,
+                    provider,
+                    ssh_connection_id,
+                    location,
+                    specs,
+                    notes,
+                }
+            })
+            .collect();
+
+        Ok(servers)
+    }
+
+    /// Remove a server by ID
+    pub async fn remove_server(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM servers WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Check if a server exists
+    pub async fn server_exists(&self, id: &str) -> Result<bool> {
+        let row: Option<(i64,)> = sqlx::query_as("SELECT COUNT(*) FROM servers WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(row.map(|(count,)| count > 0).unwrap_or(false))
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: DOMAIN METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Save a domain
+    pub async fn save_domain(&self, domain: &pctrl_core::Domain) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO domains (id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&domain.id)
+        .bind(&domain.domain)
+        .bind(domain.domain_type.to_string())
+        .bind(domain.ssl)
+        .bind(&domain.ssl_expiry)
+        .bind(&domain.cloudflare_zone_id)
+        .bind(&domain.cloudflare_record_id)
+        .bind(&domain.server_id)
+        .bind(&domain.container_id)
+        .bind(&domain.notes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get a domain by ID
+    pub async fn get_domain(&self, id: &str) -> Result<Option<pctrl_core::Domain>> {
+        let row: Option<(String, String, String, bool, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes FROM domains WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)) = row {
+            let domain_type = domain_type.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::Domain {
+                id,
+                domain,
+                domain_type,
+                ssl,
+                ssl_expiry,
+                cloudflare_zone_id,
+                cloudflare_record_id,
+                server_id,
+                container_id,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get a domain by domain name
+    pub async fn get_domain_by_name(&self, domain_name: &str) -> Result<Option<pctrl_core::Domain>> {
+        let row: Option<(String, String, String, bool, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes FROM domains WHERE LOWER(domain) = LOWER(?)")
+                .bind(domain_name)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)) = row {
+            let domain_type = domain_type.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::Domain {
+                id,
+                domain,
+                domain_type,
+                ssl,
+                ssl_expiry,
+                cloudflare_zone_id,
+                cloudflare_record_id,
+                server_id,
+                container_id,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all domains
+    pub async fn list_domains(&self) -> Result<Vec<pctrl_core::Domain>> {
+        let rows: Vec<(String, String, String, bool, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes FROM domains ORDER BY domain")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let domains = rows
+            .into_iter()
+            .map(|(id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)| {
+                let domain_type = domain_type.parse().unwrap_or_default();
+
+                pctrl_core::Domain {
+                    id,
+                    domain,
+                    domain_type,
+                    ssl,
+                    ssl_expiry,
+                    cloudflare_zone_id,
+                    cloudflare_record_id,
+                    server_id,
+                    container_id,
+                    notes,
+                }
+            })
+            .collect();
+
+        Ok(domains)
+    }
+
+    /// Remove a domain by ID
+    pub async fn remove_domain(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM domains WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: DATABASE CREDENTIALS METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Save database credentials
+    pub async fn save_database_credentials(&self, db_creds: &pctrl_core::DatabaseCredentials) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO databases (id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&db_creds.id)
+        .bind(&db_creds.name)
+        .bind(db_creds.db_type.to_string())
+        .bind(&db_creds.host)
+        .bind(db_creds.port.map(|p| p as i64))
+        .bind(&db_creds.database_name)
+        .bind(&db_creds.username)
+        .bind(&db_creds.password)
+        .bind(&db_creds.connection_string)
+        .bind(&db_creds.server_id)
+        .bind(&db_creds.container_id)
+        .bind(&db_creds.notes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get database credentials by ID
+    pub async fn get_database_credentials(&self, id: &str) -> Result<Option<pctrl_core::DatabaseCredentials>> {
+        let row: Option<(String, String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes FROM databases WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)) = row {
+            let db_type = db_type.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::DatabaseCredentials {
+                id,
+                name,
+                db_type,
+                host,
+                port: port.map(|p| p as u16),
+                database_name,
+                username,
+                password,
+                connection_string,
+                server_id,
+                container_id,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get database credentials by name (case-insensitive)
+    pub async fn get_database_credentials_by_name(&self, name: &str) -> Result<Option<pctrl_core::DatabaseCredentials>> {
+        let row: Option<(String, String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes FROM databases WHERE LOWER(name) = LOWER(?)")
+                .bind(name)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)) = row {
+            let db_type = db_type.parse().unwrap_or_default();
+
+            Ok(Some(pctrl_core::DatabaseCredentials {
+                id,
+                name,
+                db_type,
+                host,
+                port: port.map(|p| p as u16),
+                database_name,
+                username,
+                password,
+                connection_string,
+                server_id,
+                container_id,
+                notes,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all database credentials
+    pub async fn list_database_credentials(&self) -> Result<Vec<pctrl_core::DatabaseCredentials>> {
+        let rows: Vec<(String, String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes FROM databases ORDER BY name")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let databases = rows
+            .into_iter()
+            .map(|(id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)| {
+                let db_type = db_type.parse().unwrap_or_default();
+
+                pctrl_core::DatabaseCredentials {
+                    id,
+                    name,
+                    db_type,
+                    host,
+                    port: port.map(|p| p as u16),
+                    database_name,
+                    username,
+                    password,
+                    connection_string,
+                    server_id,
+                    container_id,
+                    notes,
+                }
+            })
+            .collect();
+
+        Ok(databases)
+    }
+
+    /// Remove database credentials by ID
+    pub async fn remove_database_credentials(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM databases WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: SCRIPT METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Save a script
+    pub async fn save_script(&self, script: &pctrl_core::Script) -> Result<()> {
+        let last_result = script.last_result.as_ref().map(|r| r.to_string());
+
+        sqlx::query(
+            "INSERT OR REPLACE INTO scripts (id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&script.id)
+        .bind(&script.name)
+        .bind(&script.description)
+        .bind(&script.command)
+        .bind(script.script_type.to_string())
+        .bind(&script.server_id)
+        .bind(&script.project_id)
+        .bind(script.dangerous)
+        .bind(&script.last_run)
+        .bind(&last_result)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get a script by ID
+    pub async fn get_script(&self, id: &str) -> Result<Option<pctrl_core::Script>> {
+        let row: Option<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)) = row {
+            let script_type = script_type.parse().unwrap_or_default();
+            let last_result = last_result.and_then(|r| match r.as_str() {
+                "success" => Some(pctrl_core::ScriptResult::Success),
+                "error" => Some(pctrl_core::ScriptResult::Error),
+                _ => None,
+            });
+
+            Ok(Some(pctrl_core::Script {
+                id,
+                name,
+                description,
+                command,
+                script_type,
+                server_id,
+                project_id,
+                dangerous,
+                last_run,
+                last_result,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// List all scripts
+    pub async fn list_scripts(&self) -> Result<Vec<pctrl_core::Script>> {
+        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts ORDER BY name")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let scripts = rows
+            .into_iter()
+            .map(|(id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)| {
+                let script_type = script_type.parse().unwrap_or_default();
+                let last_result = last_result.and_then(|r| match r.as_str() {
+                    "success" => Some(pctrl_core::ScriptResult::Success),
+                    "error" => Some(pctrl_core::ScriptResult::Error),
+                    _ => None,
+                });
+
+                pctrl_core::Script {
+                    id,
+                    name,
+                    description,
+                    command,
+                    script_type,
+                    server_id,
+                    project_id,
+                    dangerous,
+                    last_run,
+                    last_result,
+                }
+            })
+            .collect();
+
+        Ok(scripts)
+    }
+
+    /// List scripts for a project
+    pub async fn list_scripts_for_project(&self, project_id: &str) -> Result<Vec<pctrl_core::Script>> {
+        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts WHERE project_id = ? ORDER BY name")
+                .bind(project_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let scripts = rows
+            .into_iter()
+            .map(|(id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)| {
+                let script_type = script_type.parse().unwrap_or_default();
+                let last_result = last_result.and_then(|r| match r.as_str() {
+                    "success" => Some(pctrl_core::ScriptResult::Success),
+                    "error" => Some(pctrl_core::ScriptResult::Error),
+                    _ => None,
+                });
+
+                pctrl_core::Script {
+                    id,
+                    name,
+                    description,
+                    command,
+                    script_type,
+                    server_id,
+                    project_id,
+                    dangerous,
+                    last_run,
+                    last_result,
+                }
+            })
+            .collect();
+
+        Ok(scripts)
+    }
+
+    /// Remove a script by ID
+    pub async fn remove_script(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM scripts WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: PROJECT RESOURCE METHODS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Link a resource to a project
+    pub async fn link_project_resource(&self, resource: &pctrl_core::ProjectResource) -> Result<()> {
+        sqlx::query(
+            "INSERT OR REPLACE INTO project_resources (id, project_id, resource_type, resource_id, role, notes)
+             VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&resource.id)
+        .bind(&resource.project_id)
+        .bind(resource.resource_type.to_string())
+        .bind(&resource.resource_id)
+        .bind(&resource.role)
+        .bind(&resource.notes)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get all resources for a project
+    pub async fn get_project_resources(&self, project_id: &str) -> Result<Vec<pctrl_core::ProjectResource>> {
+        let rows: Vec<(String, String, String, String, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, project_id, resource_type, resource_id, role, notes FROM project_resources WHERE project_id = ?")
+                .bind(project_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        let resources = rows
+            .into_iter()
+            .map(|(id, project_id, resource_type, resource_id, role, notes)| {
+                let resource_type = resource_type.parse().unwrap_or(pctrl_core::ResourceType::Server);
+
+                pctrl_core::ProjectResource {
+                    id,
+                    project_id,
+                    resource_type,
+                    resource_id,
+                    role,
+                    notes,
+                }
+            })
+            .collect();
+
+        Ok(resources)
+    }
+
+    /// Unlink a resource from a project
+    pub async fn unlink_project_resource(&self, id: &str) -> Result<bool> {
+        let result = sqlx::query("DELETE FROM project_resources WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Get projects that have a specific resource linked
+    pub async fn get_projects_for_resource(&self, resource_type: &pctrl_core::ResourceType, resource_id: &str) -> Result<Vec<String>> {
+        let rows: Vec<(String,)> =
+            sqlx::query_as("SELECT project_id FROM project_resources WHERE resource_type = ? AND resource_id = ?")
+                .bind(resource_type.to_string())
+                .bind(resource_id)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(rows.into_iter().map(|(id,)| id).collect())
     }
 }

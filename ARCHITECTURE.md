@@ -2,7 +2,16 @@
 
 ## Overview
 
-pctrl follows a modular monorepo architecture with clear separation between the core functionality and various user interfaces.
+pctrl (pilotCtrl) follows a **project-centric architecture** where projects are the core entity. All resources (servers, containers, databases, domains, scripts) are linked to projects, enabling a unified view of your infrastructure.
+
+## Core Philosophy
+
+> "Mission Control for Self-Hosters & Indie Devs"
+
+- **Project-First**: Projects are the central organizing entity
+- **Dual-View System**: Project View for daily work, Infrastructure View for admin tasks
+- **Local-First**: All data stored locally with encryption
+- **Auto-Discovery**: Automatic detection and mapping of resources (planned)
 
 ## Structure
 
@@ -11,14 +20,14 @@ pctrl/
 ├── apps/
 │   ├── cli/              # CLI & TUI application (Rust)
 │   │   ├── src/
-│   │   │   ├── main.rs   # Entry point, mode selection
+│   │   │   ├── main.rs   # Entry point, command parsing
 │   │   │   ├── cli.rs    # CLI command handlers
-│   │   │   └── tui.rs    # TUI interface
+│   │   │   └── tui.rs    # TUI interface with Project View
 │   │   └── Cargo.toml
 │   │
 │   ├── desktop/          # Desktop GUI (Tauri + React)
 │   │   ├── src/          # React frontend
-│   │   ├── src-tauri/    # Rust backend
+│   │   ├── src-tauri/    # Rust backend with Tauri commands
 │   │   └── package.json
 │   │
 │   ├── landing/          # Project website (Astro)
@@ -33,7 +42,9 @@ pctrl/
 │
 ├── crates/
 │   ├── core/             # Core types and configuration
+│   │   └── src/lib.rs    # Project, Server, Domain, Database, Script types
 │   ├── database/         # Encrypted SQLite database
+│   │   └── src/lib.rs    # CRUD for all entities + project_resources
 │   ├── ssh/              # SSH connection management
 │   ├── docker/           # Docker container management
 │   ├── coolify/          # Coolify API client
@@ -43,21 +54,68 @@ pctrl/
     └── sync-website.sh   # Sync roadmap/changelog to website
 ```
 
+## Data Model (v6)
+
+### Core Entities
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PROJECTS                                 │
+│  (Central organizing entity for all resources)                   │
+│                                                                   │
+│  - id, name, description, stack[], status, color, icon, notes   │
+│  - Status: Dev | Staging | Live | Archived                       │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │   project_resources   │
+                    │  (Many-to-Many Link)  │
+                    └───────────┬───────────┘
+                                │
+    ┌───────────┬───────────┬───┴───┬───────────┬───────────┐
+    ▼           ▼           ▼       ▼           ▼           ▼
+┌───────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌───────┐ ┌───────┐
+│Server │ │Container│ │Database │ │ Domain  │ │ Git   │ │Script │
+│       │ │         │ │  Creds  │ │         │ │ Repo  │ │       │
+└───────┘ └─────────┘ └─────────┘ └─────────┘ └───────┘ └───────┘
+```
+
+### Entity Definitions
+
+| Entity | Description | Key Fields |
+|--------|-------------|------------|
+| **Project** | Central organizing unit | name, stack[], status, color |
+| **Server** | VPS, dedicated, or local server | host, type, provider, ssh_connection_id |
+| **Domain** | Domain with DNS records | name, type, server_id, ssl_status |
+| **DatabaseCredentials** | Database connection info | type, host, port, username, password |
+| **Container** | Docker container | name, image, server_id, status |
+| **Script** | Automation scripts | name, type, content, project_id |
+| **ProjectResource** | Links projects to resources | project_id, resource_type, resource_id, role |
+
 ## Component Interaction
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        User Interfaces                       │
-├──────────────┬──────────────┬──────────────┬────────────────┤
-│   CLI        │   TUI        │   GUI        │   Mobile       │
-│   (clap)     │  (ratatui)   │  (Tauri)     │   (Expo)       │
-└──────────────┴──────────────┴──────────────┴────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        User Interfaces                           │
+├──────────────┬──────────────┬──────────────┬────────────────────┤
+│   CLI        │   TUI        │   GUI        │   Mobile           │
+│   (clap)     │  (ratatui)   │  (Tauri)     │   (Expo)           │
+│              │              │              │                    │
+│  project     │  ┌────────┐  │  Dashboard   │   Quick Actions    │
+│  server      │  │Projects│  │  Projects    │   Status View      │
+│  domain      │  │  SSH   │  │  Resources   │                    │
+│  db          │  │ Docker │  │              │                    │
+│  script      │  │Coolify │  │              │                    │
+│              │  │  Git   │  │              │                    │
+│              │  └────────┘  │              │                    │
+└──────────────┴──────────────┴──────────────┴────────────────────┘
                               │
                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                        Core Library                          │
-│              (Types, Config, Error Handling)                 │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Core Library                              │
+│  Types: Project, Server, Domain, DatabaseCredentials, Script     │
+│  Config, Error Handling, Serialization                           │
+└─────────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         ▼                     ▼                     ▼
@@ -69,34 +127,134 @@ pctrl/
 │  │Encrypted│ │    │  │ Docker │  │    │  │ Docker │  │
 │  └────────┘  │    │  │Coolify │  │    │  │Coolify │  │
 │              │    │  │  Git   │  │    │  │  Git   │  │
-└──────────────┘    │  └────────┘  │    └──────────────┘
-                    └──────────────┘
+│  Tables:     │    │  └────────┘  │    └──────────────┘
+│  - projects  │    └──────────────┘
+│  - servers   │
+│  - domains   │
+│  - databases │
+│  - containers│
+│  - scripts   │
+│  - project_  │
+│    resources │
+└──────────────┘
+```
+
+## Dual-View System
+
+### Project View (Default)
+- **Focus**: Daily development work
+- **Shows**: Projects with linked resources
+- **Use Case**: "Show me everything related to my SaaS app"
+
+### Infrastructure View (Admin)
+- **Focus**: Server/resource management
+- **Shows**: All servers, containers, domains grouped by server
+- **Use Case**: "Show me all containers running on prod-server"
+
+## CLI Commands
+
+### Project-Centric Commands (v6)
+```bash
+# Projects
+pctrl project list                    # List all projects
+pctrl project add <name>              # Add new project
+pctrl project show <name>             # Show project with linked resources
+pctrl project link <project> <type> <id>  # Link resource to project
+
+# Servers
+pctrl server list
+pctrl server add <name> <host> [-t vps|dedicated|local]
+
+# Domains
+pctrl domain list
+pctrl domain add <name> [-t root|subdomain|wildcard]
+
+# Databases (with quick lookup)
+pctrl db list
+pctrl db add <name> -t postgres -H localhost -u admin
+pctrl db get <name> user              # Quick lookup: get specific field
+
+# Scripts
+pctrl script list
+pctrl script add <name> -t deploy|backup|health-check
+```
+
+### Legacy Commands (Infrastructure)
+```bash
+pctrl ssh list|add|remove|connect
+pctrl docker list|start|stop|logs
+pctrl coolify list|deploy
+pctrl git status|release
 ```
 
 ## Data Flow
 
 ### CLI/TUI Mode
 
-1. User runs command via CLI
+1. User runs command via CLI (e.g., `pctrl project show myapp`)
 2. CLI parser (clap) processes arguments
-3. Command handler invokes appropriate manager
-4. Manager performs operation (SSH, Docker, etc.)
-5. Results are formatted and displayed to user
+3. Command handler queries database for project and linked resources
+4. Results are formatted and displayed to user
 
 ### GUI Mode (Tauri)
 
 1. User interacts with React frontend
 2. Frontend calls Tauri commands
-3. Rust backend invokes appropriate manager
+3. Rust backend queries database
 4. Results are returned to frontend
 5. React components update UI
 
 ### Data Persistence
 
-1. Application state is stored in encrypted SQLite
-2. Database crate handles encryption/decryption
-3. Configuration is loaded on startup
+1. All entities stored in encrypted SQLite
+2. Database crate handles encryption/decryption (AES-256-GCM)
+3. Project-resource links stored in `project_resources` table
 4. Changes are persisted immediately
+
+## Database Schema (v6)
+
+```sql
+-- Core project entity
+CREATE TABLE projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    stack TEXT,                    -- JSON array
+    status TEXT DEFAULT 'dev',     -- dev|staging|live|archived
+    color TEXT,
+    icon TEXT,
+    notes TEXT,
+    created_at DATETIME,
+    updated_at DATETIME
+);
+
+-- Server definitions
+CREATE TABLE servers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    host TEXT NOT NULL,
+    server_type TEXT DEFAULT 'vps',
+    provider TEXT,
+    ssh_connection_id TEXT,
+    location TEXT,
+    specs TEXT,                    -- JSON object
+    notes TEXT,
+    FOREIGN KEY (ssh_connection_id) REFERENCES ssh_connections(id)
+);
+
+-- Many-to-many project-resource links
+CREATE TABLE project_resources (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    resource_type TEXT NOT NULL,   -- server|container|database|domain|git|script
+    resource_id TEXT NOT NULL,
+    role TEXT,                     -- primary|backup|staging|etc
+    notes TEXT,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+-- Additional tables: domains, databases, containers, scripts, discovery_cache
+```
 
 ## Key Technologies
 
@@ -111,6 +269,8 @@ pctrl/
 - **reqwest**: HTTP client for Coolify API
 - **aes-gcm**: Encryption
 - **argon2**: Key derivation
+- **uuid**: Unique identifiers
+- **serde**: Serialization/deserialization
 
 ### Frontend
 - **React**: UI library for desktop and web
@@ -124,12 +284,33 @@ pctrl/
 ### Encryption
 - Database encryption using AES-256-GCM
 - Key derivation using Argon2
-- Secure storage of credentials
+- Secure storage of credentials (passwords, API keys)
+- Cryptographically secure random nonces
 
 ### Authentication
 - SSH public key authentication
 - API key storage in encrypted database
 - No plaintext passwords in configuration
+
+## Future: Auto-Discovery (Phase 3)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Auto-Discovery Engine                        │
+├─────────────────────────────────────────────────────────────────┤
+│  DNS Lookup     → Find domains pointing to servers               │
+│  Port Scanner   → Detect services (22, 80, 443, 5432, etc.)     │
+│  Docker Inspect → List containers, extract env vars              │
+│  Coolify API    → Sync projects and deployments                  │
+│  Git Remote     → Link repos to projects                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │ discovery_cache │
+                    │  (suggestions)  │
+                    └─────────────────┘
+```
 
 ## Performance
 
@@ -138,6 +319,7 @@ pctrl/
 - Connection pooling for database
 - Lazy loading of resources
 - Caching where appropriate
+- Efficient project-resource queries
 
 ## Extensibility
 
@@ -184,12 +366,3 @@ pctrl/
 - App Store / Play Store distribution
 - Over-the-air updates via Expo
 - Push notification support
-
-## Future Enhancements
-
-1. **Plugin System**: Allow third-party extensions
-2. **Cloud Sync**: Optional cloud backup (encrypted)
-3. **Team Features**: Multi-user support
-4. **Advanced Monitoring**: Real-time metrics and alerts
-5. **AI Assistant**: Natural language command interface
-6. **Multi-platform**: iOS, Android native apps

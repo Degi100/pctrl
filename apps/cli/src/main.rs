@@ -51,7 +51,47 @@ impl From<CliMode> for Mode {
 }
 
 #[derive(Subcommand)]
-enum Commands {
+pub enum Commands {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // v6: PROJECT-CENTRIC COMMANDS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// Project management (v6 core)
+    #[command(alias = "p")]
+    Project {
+        #[command(subcommand)]
+        command: ProjectCommands,
+    },
+
+    /// Server management (v6)
+    Server {
+        #[command(subcommand)]
+        command: ServerCommands,
+    },
+
+    /// Domain management (v6)
+    Domain {
+        #[command(subcommand)]
+        command: DomainCommands,
+    },
+
+    /// Database credentials management (v6)
+    #[command(alias = "db")]
+    Database {
+        #[command(subcommand)]
+        command: DatabaseCommands,
+    },
+
+    /// Script management (v6)
+    Script {
+        #[command(subcommand)]
+        command: ScriptCommands,
+    },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // LEGACY COMMANDS (still supported)
+    // ═══════════════════════════════════════════════════════════════════════════
+
     /// SSH connection management
     Ssh {
         #[command(subcommand)]
@@ -71,6 +111,236 @@ enum Commands {
     Git {
         #[command(subcommand)]
         command: GitCommands,
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v6: PROJECT COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum ProjectCommands {
+    /// List all projects
+    List,
+    /// Add a new project
+    Add {
+        /// Project name
+        name: String,
+        /// Project description
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Tech stack (comma-separated, e.g., "rust,tauri,react")
+        #[arg(short, long)]
+        stack: Option<String>,
+        /// Status: dev, staging, live, archived
+        #[arg(long, default_value = "dev")]
+        status: String,
+    },
+    /// Show project details
+    Show {
+        /// Project name or ID
+        name: String,
+    },
+    /// Remove a project
+    Remove {
+        /// Project name or ID
+        name: String,
+    },
+    /// Link a resource to a project
+    Link {
+        /// Project name or ID
+        project: String,
+        /// Resource type: server, container, database, domain, git, coolify, script
+        resource_type: String,
+        /// Resource ID
+        resource_id: String,
+        /// Role description (e.g., "production_db", "staging_server")
+        #[arg(short, long)]
+        role: Option<String>,
+    },
+    /// Unlink a resource from a project
+    Unlink {
+        /// Project name or ID
+        project: String,
+        /// Resource link ID
+        link_id: String,
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v6: SERVER COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum ServerCommands {
+    /// List all servers
+    List,
+    /// Add a new server
+    Add {
+        /// Server name
+        name: String,
+        /// Server host (IP or hostname)
+        host: String,
+        /// Server type: vps, dedicated, local, cloud
+        #[arg(short = 't', long, default_value = "vps")]
+        server_type: String,
+        /// Provider (e.g., hetzner, aws, digitalocean)
+        #[arg(short, long)]
+        provider: Option<String>,
+        /// SSH connection ID to use
+        #[arg(short, long)]
+        ssh: Option<String>,
+        /// Location (e.g., "Falkenstein, DE")
+        #[arg(short, long)]
+        location: Option<String>,
+    },
+    /// Show server details
+    Show {
+        /// Server name or ID
+        name: String,
+    },
+    /// Remove a server
+    Remove {
+        /// Server name or ID
+        name: String,
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v6: DOMAIN COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum DomainCommands {
+    /// List all domains
+    List,
+    /// Add a new domain
+    Add {
+        /// Domain name (e.g., app.example.com)
+        domain: String,
+        /// Domain type: production, staging, dev
+        #[arg(short = 't', long, default_value = "production")]
+        domain_type: String,
+        /// Server ID this domain points to
+        #[arg(short, long)]
+        server: Option<String>,
+        /// SSL enabled
+        #[arg(long, default_value = "true")]
+        ssl: bool,
+    },
+    /// Show domain details
+    Show {
+        /// Domain name
+        domain: String,
+    },
+    /// Remove a domain
+    Remove {
+        /// Domain name
+        domain: String,
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v6: DATABASE COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum DatabaseCommands {
+    /// List all database credentials
+    List,
+    /// Add database credentials
+    Add {
+        /// Database name (for display)
+        name: String,
+        /// Database type: mongodb, postgres, mysql, redis, sqlite
+        #[arg(short = 't', long)]
+        db_type: String,
+        /// Database host
+        #[arg(short = 'H', long)]
+        host: Option<String>,
+        /// Database port
+        #[arg(short, long)]
+        port: Option<u16>,
+        /// Database name
+        #[arg(short = 'd', long)]
+        database: Option<String>,
+        /// Username
+        #[arg(short, long)]
+        user: Option<String>,
+        /// Password
+        #[arg(short = 'P', long)]
+        password: Option<String>,
+        /// Connection string (alternative to individual fields)
+        #[arg(short, long)]
+        connection_string: Option<String>,
+    },
+    /// Show database credentials
+    Show {
+        /// Database name or ID
+        name: String,
+    },
+    /// Get specific field (user, pass, url)
+    Get {
+        /// Database name or ID
+        name: String,
+        /// Field to get: user, pass, url, host, port, database
+        field: String,
+    },
+    /// Remove database credentials
+    Remove {
+        /// Database name or ID
+        name: String,
+    },
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// v6: SCRIPT COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum ScriptCommands {
+    /// List all scripts
+    List,
+    /// Add a new script
+    Add {
+        /// Script name
+        name: String,
+        /// Command to execute
+        #[arg(short, long)]
+        command: String,
+        /// Script description
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Script type: ssh, local, docker
+        #[arg(short = 't', long, default_value = "ssh")]
+        script_type: String,
+        /// Server ID to run on
+        #[arg(short, long)]
+        server: Option<String>,
+        /// Project ID (optional)
+        #[arg(short, long)]
+        project: Option<String>,
+        /// Mark as dangerous (requires confirmation)
+        #[arg(long)]
+        dangerous: bool,
+    },
+    /// Show script details
+    Show {
+        /// Script name or ID
+        name: String,
+    },
+    /// Run a script
+    Run {
+        /// Script name or ID
+        name: String,
+        /// Force run without confirmation (for dangerous scripts)
+        #[arg(short, long)]
+        force: bool,
+    },
+    /// Remove a script
+    Remove {
+        /// Script name or ID
+        name: String,
     },
 }
 

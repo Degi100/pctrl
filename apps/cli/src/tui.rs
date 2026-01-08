@@ -3,7 +3,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use pctrl_core::{AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, SshConnection};
+use pctrl_core::{
+    AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, Project, ProjectStatus,
+    SshConnection,
+};
 use pctrl_database::Database;
 use ratatui::{
     backend::CrosstermBackend,
@@ -22,6 +25,7 @@ use uuid::Uuid;
 #[derive(Clone, Copy, PartialEq)]
 enum SelectedPanel {
     Status,
+    Projects, // v6: Project-centric view
     Ssh,
     Docker,
     Coolify,
@@ -50,6 +54,10 @@ struct InputForm {
     url: String,
     path: String,
     token: String,
+    // v6: Project fields
+    description: String,
+    stack: String,
+    status: String,
     current_field: usize,
     message: Option<String>,
 }
@@ -58,6 +66,8 @@ struct App {
     selected_panel: SelectedPanel,
     config: Arc<Config>,
     db: Arc<Database>,
+    // v6: Projects loaded from database
+    projects: Vec<Project>,
     // Connection status tracking: id -> status
     ssh_status: HashMap<String, ConnectionStatus>,
     docker_status: HashMap<String, ConnectionStatus>,
@@ -96,6 +106,7 @@ impl App {
             selected_panel: SelectedPanel::Status,
             config,
             db,
+            projects: Vec::new(), // Will be loaded async
             ssh_status,
             docker_status,
             coolify_status,
@@ -105,9 +116,22 @@ impl App {
         }
     }
 
+    /// Load projects from database
+    async fn load_projects(&mut self) {
+        if let Ok(projects) = self.db.list_projects().await {
+            self.projects = projects;
+        }
+    }
+
     /// Get the fields for the current panel type
     fn get_form_fields(&self) -> Vec<(&'static str, &str)> {
         match self.selected_panel {
+            SelectedPanel::Projects => vec![
+                ("Name", &self.input_form.name),
+                ("Description", &self.input_form.description),
+                ("Stack", &self.input_form.stack),
+                ("Status", &self.input_form.status),
+            ],
             SelectedPanel::Ssh => vec![
                 ("Name", &self.input_form.name),
                 ("Host", &self.input_form.host),
@@ -135,6 +159,13 @@ impl App {
     fn current_input_mut(&mut self) -> Option<&mut String> {
         let field_idx = self.input_form.current_field;
         match self.selected_panel {
+            SelectedPanel::Projects => match field_idx {
+                0 => Some(&mut self.input_form.name),
+                1 => Some(&mut self.input_form.description),
+                2 => Some(&mut self.input_form.stack),
+                3 => Some(&mut self.input_form.status),
+                _ => None,
+            },
             SelectedPanel::Ssh => match field_idx {
                 0 => Some(&mut self.input_form.name),
                 1 => Some(&mut self.input_form.host),
@@ -165,6 +196,7 @@ impl App {
     /// Get the number of fields for current panel
     fn field_count(&self) -> usize {
         match self.selected_panel {
+            SelectedPanel::Projects => 4,
             SelectedPanel::Ssh => 4,
             SelectedPanel::Docker => 2,
             SelectedPanel::Coolify => 3,
@@ -176,13 +208,18 @@ impl App {
     /// Reset the input form
     fn reset_form(&mut self) {
         self.input_form = InputForm::default();
-        // Set default port for SSH
-        if self.selected_panel == SelectedPanel::Ssh {
-            self.input_form.port = "22".to_string();
-        }
-        // Set default URL for Docker
-        if self.selected_panel == SelectedPanel::Docker {
-            self.input_form.url = "unix:///var/run/docker.sock".to_string();
+        // Set default values based on panel type
+        match self.selected_panel {
+            SelectedPanel::Projects => {
+                self.input_form.status = "dev".to_string();
+            }
+            SelectedPanel::Ssh => {
+                self.input_form.port = "22".to_string();
+            }
+            SelectedPanel::Docker => {
+                self.input_form.url = "unix:///var/run/docker.sock".to_string();
+            }
+            _ => {}
         }
     }
 
@@ -248,6 +285,7 @@ pub async fn run(config: Arc<Config>, db: Arc<Database>) -> anyhow::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new(config, db);
+    app.load_projects().await; // Load projects from database
     app.check_all_connections(); // Initial status check
     let res = run_app(&mut terminal, &mut app).await;
 
@@ -316,13 +354,15 @@ async fn run_app<B: ratatui::backend::Backend>(
                 .split(chunks[1]);
 
             // Sidebar Menu
-            let total_count = app.config.ssh_connections.len()
+            let total_count = app.projects.len()
+                + app.config.ssh_connections.len()
                 + app.config.docker_hosts.len()
                 + app.config.coolify_instances.len()
                 + app.config.git_repos.len();
 
             let menu_items: Vec<ListItem> = [
                 ("Status", total_count, SelectedPanel::Status),
+                ("Projects", app.projects.len(), SelectedPanel::Projects),
                 ("SSH", app.config.ssh_connections.len(), SelectedPanel::Ssh),
                 (
                     "Docker",
@@ -376,6 +416,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                         format!(
                             "  Add New {}",
                             match app.selected_panel {
+                                SelectedPanel::Projects => "Project",
                                 SelectedPanel::Ssh => "SSH Connection",
                                 SelectedPanel::Docker => "Docker Host",
                                 SelectedPanel::Coolify => "Coolify Instance",
@@ -640,6 +681,54 @@ async fn run_app<B: ratatui::backend::Backend>(
 
                         Paragraph::new(items)
                     }
+                    SelectedPanel::Projects => {
+                        let items: Vec<Line> = if app.projects.is_empty() {
+                            vec![
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  No projects configured",
+                                    Style::default().fg(Color::DarkGray),
+                                )),
+                                Line::from(""),
+                                Line::from(Span::styled(
+                                    "  Press 'a' to add a project, or use:",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                                Line::from(Span::styled(
+                                    "  pctrl project add <name>",
+                                    Style::default().fg(Color::Yellow),
+                                )),
+                            ]
+                        } else {
+                            app.projects
+                                .iter()
+                                .map(|project| {
+                                    // Status color based on project status
+                                    let status_color = match project.status {
+                                        ProjectStatus::Dev => Color::Yellow,
+                                        ProjectStatus::Staging => Color::Blue,
+                                        ProjectStatus::Live => Color::Green,
+                                        ProjectStatus::Archived => Color::DarkGray,
+                                    };
+                                    let stack_str = if project.stack.is_empty() {
+                                        String::new()
+                                    } else {
+                                        format!(" [{}]", project.stack.join(", "))
+                                    };
+                                    Line::from(vec![
+                                        Span::styled("  ● ", Style::default().fg(status_color)),
+                                        Span::styled(&project.name, Style::default().fg(Color::Cyan)),
+                                        Span::styled(
+                                            format!(" ({})", project.status),
+                                            Style::default().fg(status_color),
+                                        ),
+                                        Span::styled(stack_str, Style::default().fg(Color::DarkGray)),
+                                    ])
+                                })
+                                .collect()
+                        };
+                        Paragraph::new(items)
+                    }
                     SelectedPanel::Ssh => {
                         let items: Vec<Line> = if app.config.ssh_connections.is_empty() {
                             vec![
@@ -780,6 +869,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                         " {} ",
                         match app.selected_panel {
                             SelectedPanel::Status => "Status",
+                            SelectedPanel::Projects => "Projects",
                             SelectedPanel::Ssh => "SSH Connections",
                             SelectedPanel::Docker => "Docker Hosts",
                             SelectedPanel::Coolify => "Coolify Instances",
@@ -856,7 +946,8 @@ async fn run_app<B: ratatui::backend::Backend>(
                             KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                             KeyCode::Down | KeyCode::Char('j') => {
                                 app.selected_panel = match app.selected_panel {
-                                    SelectedPanel::Status => SelectedPanel::Ssh,
+                                    SelectedPanel::Status => SelectedPanel::Projects,
+                                    SelectedPanel::Projects => SelectedPanel::Ssh,
                                     SelectedPanel::Ssh => SelectedPanel::Docker,
                                     SelectedPanel::Docker => SelectedPanel::Coolify,
                                     SelectedPanel::Coolify => SelectedPanel::Git,
@@ -866,7 +957,8 @@ async fn run_app<B: ratatui::backend::Backend>(
                             KeyCode::Up | KeyCode::Char('k') => {
                                 app.selected_panel = match app.selected_panel {
                                     SelectedPanel::Status => SelectedPanel::Git,
-                                    SelectedPanel::Ssh => SelectedPanel::Status,
+                                    SelectedPanel::Projects => SelectedPanel::Status,
+                                    SelectedPanel::Ssh => SelectedPanel::Projects,
                                     SelectedPanel::Docker => SelectedPanel::Ssh,
                                     SelectedPanel::Coolify => SelectedPanel::Docker,
                                     SelectedPanel::Git => SelectedPanel::Coolify,
@@ -945,10 +1037,50 @@ async fn run_app<B: ratatui::backend::Backend>(
 async fn save_new_entry(app: &mut App) -> anyhow::Result<()> {
     let id = Uuid::new_v4().to_string();
 
+    // Handle Projects separately (saved to database, not config)
+    if app.selected_panel == SelectedPanel::Projects {
+        if app.input_form.name.is_empty() {
+            anyhow::bail!("Name is required");
+        }
+
+        let stack: Vec<String> = if app.input_form.stack.is_empty() {
+            vec![]
+        } else {
+            app.input_form
+                .stack
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        };
+
+        let status: ProjectStatus = app.input_form.status.parse().unwrap_or_default();
+
+        let project = Project {
+            id,
+            name: app.input_form.name.clone(),
+            description: if app.input_form.description.is_empty() {
+                None
+            } else {
+                Some(app.input_form.description.clone())
+            },
+            stack,
+            status,
+            color: None,
+            icon: None,
+            notes: None,
+        };
+
+        app.db.save_project(&project).await?;
+        app.projects.push(project);
+        return Ok(());
+    }
+
     // Get mutable config
     let config = Arc::make_mut(&mut app.config);
 
     match app.selected_panel {
+        SelectedPanel::Projects => unreachable!(), // Handled above
         SelectedPanel::Ssh => {
             if app.input_form.name.is_empty() || app.input_form.host.is_empty() {
                 anyhow::bail!("Name and Host are required");
