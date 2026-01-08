@@ -50,6 +50,35 @@ impl Database {
         Ok(row.map(|(count,)| count > 0).unwrap_or(false))
     }
 
+    /// Get an SSH connection by ID
+    pub async fn get_ssh_connection(&self, id: &str) -> Result<Option<pctrl_core::SshConnection>> {
+        let row = sqlx::query(
+            "SELECT id, name, host, port, username, auth_method FROM ssh_connections WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        match row {
+            Some(row) => {
+                let auth_method: String = row.get("auth_method");
+                let auth_method = serde_json::from_str(&auth_method)
+                    .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+                Ok(Some(pctrl_core::SshConnection {
+                    id: row.get("id"),
+                    name: row.get("name"),
+                    host: row.get("host"),
+                    port: row.get::<i64, _>("port") as u16,
+                    username: row.get("username"),
+                    auth_method,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
     /// Load all SSH connections
     pub(crate) async fn load_ssh_connections(&self) -> Result<Vec<pctrl_core::SshConnection>> {
         let rows =

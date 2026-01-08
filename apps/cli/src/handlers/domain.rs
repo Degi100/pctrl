@@ -28,6 +28,9 @@ pub async fn handle(command: DomainCommands, db: &Database) -> anyhow::Result<()
             domain_type,
             server,
             ssl,
+            ssl_expiry,
+            cloudflare_zone,
+            cloudflare_record,
         } => {
             let id = domain.replace('.', "-").to_lowercase();
 
@@ -42,9 +45,9 @@ pub async fn handle(command: DomainCommands, db: &Database) -> anyhow::Result<()
                 domain: domain.clone(),
                 domain_type: domain_type.clone(),
                 ssl,
-                ssl_expiry: None,
-                cloudflare_zone_id: None,
-                cloudflare_record_id: None,
+                ssl_expiry: ssl_expiry.clone(),
+                cloudflare_zone_id: cloudflare_zone.clone(),
+                cloudflare_record_id: cloudflare_record.clone(),
                 server_id: server.clone(),
                 container_id: None,
                 notes: None,
@@ -58,8 +61,21 @@ pub async fn handle(command: DomainCommands, db: &Database) -> anyhow::Result<()
             println!("  ID:     {}", id);
             println!("  Type:   {}", domain_type);
             println!("  SSL:    {}", if ssl { "enabled" } else { "disabled" });
-            if let Some(s) = server {
+            if let Some(exp) = &ssl_expiry {
+                println!("  Expiry: {}", exp);
+            }
+            if let Some(s) = &server {
                 println!("  Server: {}", s);
+            }
+            if cloudflare_zone.is_some() || cloudflare_record.is_some() {
+                println!();
+                println!("  Cloudflare:");
+                if let Some(z) = &cloudflare_zone {
+                    println!("    Zone:   {}", z);
+                }
+                if let Some(r) = &cloudflare_record {
+                    println!("    Record: {}", r);
+                }
             }
         }
 
@@ -83,6 +99,16 @@ pub async fn handle(command: DomainCommands, db: &Database) -> anyhow::Result<()
             }
             if let Some(s) = &dom.server_id {
                 println!("  Server: {}", s);
+            }
+            if dom.cloudflare_zone_id.is_some() || dom.cloudflare_record_id.is_some() {
+                println!();
+                println!("  Cloudflare:");
+                if let Some(z) = &dom.cloudflare_zone_id {
+                    println!("    Zone:   {}", z);
+                }
+                if let Some(r) = &dom.cloudflare_record_id {
+                    println!("    Record: {}", r);
+                }
             }
             println!();
         }

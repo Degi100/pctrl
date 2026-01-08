@@ -225,6 +225,15 @@ pub enum DomainCommands {
         /// SSL enabled
         #[arg(long, default_value = "true")]
         ssl: bool,
+        /// SSL certificate expiry date (e.g., "2025-12-31")
+        #[arg(long)]
+        ssl_expiry: Option<String>,
+        /// Cloudflare Zone ID
+        #[arg(long)]
+        cloudflare_zone: Option<String>,
+        /// Cloudflare DNS Record ID
+        #[arg(long)]
+        cloudflare_record: Option<String>,
     },
     /// Show domain details
     Show {
@@ -271,6 +280,12 @@ pub enum DatabaseCommands {
         /// Connection string (alternative to individual fields)
         #[arg(short, long)]
         connection_string: Option<String>,
+        /// Server ID where this database runs
+        #[arg(short, long)]
+        server: Option<String>,
+        /// Container ID (for dockerized databases)
+        #[arg(long)]
+        container: Option<String>,
     },
     /// Show database credentials
     Show {

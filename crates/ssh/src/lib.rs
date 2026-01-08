@@ -1,4 +1,4 @@
-use pctrl_core::{AuthMethod, Result, SshConnection};
+use pctrl_core::{AuthMethod, Result, ServerSpecs, SshConnection};
 use ssh2::Session;
 use std::net::TcpStream;
 use std::path::Path;
@@ -156,6 +156,65 @@ impl SshManager {
     /// List all connections
     pub fn list_connections(&self) -> &[SshConnection] {
         &self.connections
+    }
+
+    /// Detect server specs via SSH (CPU cores, RAM, Disk)
+    pub fn detect_server_specs(&self, id: &str, password: Option<&str>) -> Result<ServerSpecs> {
+        let session = self.connect_with_password(id, password)?;
+
+        // Get CPU cores
+        let cpu_cores = self
+            .exec_on_session(
+                &session,
+                "nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null",
+            )
+            .ok()
+            .and_then(|s| s.trim().parse::<u8>().ok());
+
+        // Get RAM in GB
+        let ram_gb = self
+            .exec_on_session(
+                &session,
+                "free -g 2>/dev/null | awk '/^Mem:/{print $2}' || sysctl -n hw.memsize 2>/dev/null | awk '{print int($1/1024/1024/1024)}'",
+            )
+            .ok()
+            .and_then(|s| s.trim().parse::<u16>().ok());
+
+        // Get Disk in GB (root partition)
+        let disk_gb = self
+            .exec_on_session(
+                &session,
+                "df -BG / 2>/dev/null | awk 'NR==2{gsub(/G/,\"\",$2); print $2}' || df -g / 2>/dev/null | awk 'NR==2{print $2}'",
+            )
+            .ok()
+            .and_then(|s| s.trim().parse::<u32>().ok());
+
+        Ok(ServerSpecs {
+            cpu_cores,
+            ram_gb,
+            disk_gb,
+        })
+    }
+
+    /// Execute command on an existing session
+    fn exec_on_session(&self, session: &Session, command: &str) -> Result<String> {
+        let mut channel = session
+            .channel_session()
+            .map_err(|e| pctrl_core::Error::Ssh(format!("Channel creation failed: {}", e)))?;
+
+        channel
+            .exec(command)
+            .map_err(|e| pctrl_core::Error::Ssh(format!("Command execution failed: {}", e)))?;
+
+        let mut output = String::new();
+        std::io::Read::read_to_string(&mut channel, &mut output)
+            .map_err(|e| pctrl_core::Error::Ssh(format!("Failed to read output: {}", e)))?;
+
+        channel
+            .wait_close()
+            .map_err(|e| pctrl_core::Error::Ssh(format!("Channel close failed: {}", e)))?;
+
+        Ok(output)
     }
 }
 

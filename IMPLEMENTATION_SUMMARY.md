@@ -87,27 +87,28 @@ pctrl project unlink <project> <link_id>
 
 # Servers
 pctrl server list
-pctrl server add <name> <host> [-t vps|dedicated|local] [-p provider]
+pctrl server add <name> <host> [-t vps|dedicated|local|cloud] [-p provider]
 pctrl server show <name>
 pctrl server remove <name>
 
 # Domains
 pctrl domain list
-pctrl domain add <name> [-t root|subdomain|wildcard] [-s server]
+pctrl domain add <name> [-t production|staging|dev] [-s server] [--ssl-expiry DATE] [--cloudflare-zone ID] [--cloudflare-record ID]
 pctrl domain show <name>
 pctrl domain remove <name>
 
 # Databases (with quick lookup)
 pctrl db list
-pctrl db add <name> -t postgres|mysql|mongodb|redis|sqlite
+pctrl db add <name> -t postgres|mysql|mongodb|redis|sqlite [-H host] [-p port] [-u user] [-P pass] [-s server] [--container ID]
 pctrl db show <name>
 pctrl db get <name> <field>    # Quick lookup: pctrl db get mydb user
 pctrl db remove <name>
 
 # Scripts
 pctrl script list
-pctrl script add <name> -t deploy|backup|health-check|custom [-p project]
+pctrl script add <name> -t ssh|local|docker -c <command> [-s server] [--docker-host <id>] [--container <id>]
 pctrl script show <name>
+pctrl script run <name>
 pctrl script remove <name>
 ```
 
@@ -160,61 +161,90 @@ The TUI now includes a **Projects panel**:
 - Cryptographically secure random nonces
 - Secure credential storage
 
+### 8. Code Refactoring
+
+The codebase was refactored from monolithic files into focused modules:
+
+| Original File | Lines | New Structure | Modules |
+|--------------|-------|---------------|---------|
+| `database/lib.rs` | 1,656 | `crud/` directory | 12 modules |
+| `cli/cli.rs` | 1,321 | `handlers/` directory | 11 modules |
+| `cli/tui.rs` | 1,249 | `tui/` directory | 6 modules |
+| `core/lib.rs` | 527 | `types/` directory | 11 modules |
+| **Total** | **4,753** | **4 directories** | **40 modules** |
+
+**Benefits:**
+- Each module has single responsibility
+- Easier navigation and maintenance
+- Better compile-time error messages
+- Cleaner imports and dependencies
+
 ## Statistics
 
-- **~50+ source files** created
-- **6 Rust crates** with clear separation of concerns
+- **~70+ source files** created
+- **6 Rust crates** with modular architecture
 - **4 applications** in the monorepo
 - **3 operational modes** (CLI, TUI, GUI)
 - **8 entity types** (Project, Server, Domain, Database, Container, Script, ProjectResource, Config)
 - **5 integration types** (SSH, Docker, Coolify, Git, Database)
+- **40 focused modules** (after refactoring from 4 monolithic files)
 
 ## Key Features Implemented
 
 ### Project Management
-- [x] Create, list, show, remove projects
-- [x] Project status tracking (dev/staging/live/archived)
-- [x] Stack tagging (e.g., "rust, tauri, react")
-- [x] Project-resource linking
+- ✅ Create, list, show, remove projects
+- ✅ Project status tracking (dev/staging/live/archived)
+- ✅ Stack tagging (e.g., "rust, tauri, react")
+- ✅ Project-resource linking
 
 ### Server Management
-- [x] Server registry with types (vps, dedicated, local)
-- [x] Provider tracking (hetzner, digitalocean, etc.)
-- [x] SSH connection linking
-- [x] Server specs storage
+- ✅ Server registry with types (vps, dedicated, local, cloud)
+- ✅ Provider tracking (hetzner, digitalocean, etc.)
+- ✅ SSH connection linking
+- ✅ Server specs auto-detection via SSH (CPU, RAM, Disk)
 
 ### Domain Management
-- [x] Domain registry
-- [x] Domain types (root, subdomain, wildcard)
-- [x] Server association
+- ✅ Domain registry
+- ✅ Domain types (production, staging, dev)
+- ✅ Server association
+- ✅ SSL tracking (expiry date)
+- ✅ Cloudflare integration fields
 
 ### Database Credentials
-- [x] Secure credential storage
-- [x] Multiple database types (postgres, mysql, mongodb, redis, sqlite)
-- [x] Quick field lookup (`pctrl db get mydb password`)
-- [x] Container association
+- ✅ Secure credential storage
+- ✅ Multiple database types (postgres, mysql, mongodb, redis, sqlite)
+- ✅ Quick field lookup (`pctrl db get mydb password`)
+- ✅ Container association
 
 ### Script Management
-- [x] Script registry
-- [x] Script types (deploy, backup, health-check, custom)
-- [x] Project association
+- ✅ Script registry
+- ✅ Script types (ssh, local, docker)
+- ✅ Command storage
+- ✅ Script execution (local, ssh, docker)
+- ✅ Server association for SSH scripts
+- ✅ Docker host/container association for Docker scripts
 
 ### TUI Enhancements
-- [x] Projects panel with status indicators
-- [x] Add project form
-- [x] Status-colored display
-- [x] Navigation including Projects
+- ✅ Projects panel with status indicators
+- ✅ Add project form
+- ✅ Status-colored display
+- ✅ Navigation including Projects
 
 ## Testing Results
 
 ```
-✅ cargo check --package pctrl-cli    # Compiles successfully
-✅ cargo check --package pctrl-core   # Compiles successfully
-✅ cargo check --package pctrl-database # Compiles successfully
-✅ All entity types serialize/deserialize correctly
-✅ Database CRUD operations work
-✅ CLI commands parse correctly
-✅ TUI renders Projects panel
+✅ cargo test                         # 5/5 integration tests pass
+✅ cargo build --release              # Compiles successfully
+✅ cargo clippy                       # No warnings
+✅ cargo fmt                          # Code formatted
+
+CLI Commands Tested:
+✅ pctrl --help                       # Shows all commands
+✅ pctrl project list                 # Lists projects
+✅ pctrl server add/list/remove       # Server CRUD works
+✅ pctrl ssh list                     # SSH connections listed
+✅ pctrl script list                  # Scripts listed
+✅ pctrl docker hosts                 # Docker hosts listed
 ```
 
 ## What's Next
@@ -243,25 +273,66 @@ The TUI now includes a **Projects panel**:
 pctrl/
 ├── apps/
 │   ├── cli/src/
-│   │   ├── main.rs     # CLI commands (project, server, domain, db, script)
-│   │   ├── cli.rs      # Command handlers
-│   │   └── tui.rs      # TUI with Project View
-│   ├── desktop/        # Tauri + React
-│   ├── landing/        # Astro website
-│   └── mobile/         # Expo app
+│   │   ├── main.rs              # CLI entry + Clap definitions
+│   │   ├── style.rs             # Terminal styling
+│   │   ├── handlers/            # Command handlers (11 modules)
+│   │   │   ├── mod.rs           # Dispatcher
+│   │   │   ├── project.rs       # Project commands
+│   │   │   ├── server.rs        # Server commands
+│   │   │   ├── domain.rs        # Domain commands
+│   │   │   ├── database.rs      # Database commands
+│   │   │   ├── script.rs        # Script commands
+│   │   │   └── legacy/          # SSH, Docker, Coolify, Git
+│   │   └── tui/                 # TUI modules (6 modules)
+│   │       ├── mod.rs           # Entry point
+│   │       ├── types.rs         # Enums & structs
+│   │       ├── app.rs           # State management
+│   │       ├── ui.rs            # Rendering
+│   │       ├── input.rs         # Input handling
+│   │       └── checks.rs        # Connection checks
+│   ├── desktop/                 # Tauri + React
+│   ├── landing/                 # Astro website
+│   └── mobile/                  # Expo app
 │
 ├── crates/
-│   ├── core/src/lib.rs      # All entity types
-│   ├── database/src/lib.rs  # CRUD + schema
+│   ├── core/src/
+│   │   ├── lib.rs               # Re-exports
+│   │   └── types/               # Type modules (11 modules)
+│   │       ├── mod.rs           # Re-exports
+│   │       ├── config.rs        # Config + Mode
+│   │       ├── project.rs       # Project types
+│   │       ├── server.rs        # Server types
+│   │       ├── domain.rs        # Domain types
+│   │       ├── database.rs      # Database types
+│   │       ├── container.rs     # Container types
+│   │       ├── script.rs        # Script types
+│   │       ├── resource.rs      # Resource linking
+│   │       ├── legacy.rs        # SSH, Docker, etc.
+│   │       └── error.rs         # Error types
+│   ├── database/src/
+│   │   ├── lib.rs               # Core + schema
+│   │   └── crud/                # CRUD modules (12 modules)
+│   │       ├── mod.rs
+│   │       ├── config.rs
+│   │       ├── project.rs
+│   │       ├── server.rs
+│   │       ├── domain.rs
+│   │       ├── database_creds.rs
+│   │       ├── script.rs
+│   │       ├── project_resources.rs
+│   │       ├── ssh.rs
+│   │       ├── docker.rs
+│   │       ├── coolify.rs
+│   │       └── git.rs
 │   ├── ssh/
 │   ├── docker/
 │   ├── coolify/
 │   └── git/
 │
-├── ARCHITECTURE.md      # System architecture
-├── ROADMAP.md          # Development roadmap
-├── CONTRIBUTING.md     # Contribution guidelines
-└── IMPLEMENTATION_SUMMARY.md  # This file
+├── ARCHITECTURE.md
+├── ROADMAP.md
+├── CONTRIBUTING.md
+└── IMPLEMENTATION_SUMMARY.md
 ```
 
 ## Conclusion
@@ -274,5 +345,6 @@ Successfully implemented **MASTERPLAN v6** with:
 - Project-resource linking
 - TUI with Project View
 - CLI commands for all entity types
+- **Modular codebase** (40 focused modules)
 
-The project provides a solid foundation for managing projects and infrastructure from a unified interface with project as the central organizing concept.
+The project provides a solid foundation for managing projects and infrastructure from a unified interface with project as the central organizing concept. The recent refactoring from 4 monolithic files (~4,750 lines) into 40 focused modules significantly improves maintainability and developer experience.

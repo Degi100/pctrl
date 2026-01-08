@@ -35,6 +35,8 @@ pub async fn handle(command: DatabaseCommands, db: &Database) -> anyhow::Result<
             user,
             password,
             connection_string,
+            server,
+            container,
         } => {
             let id = name.to_lowercase().replace(' ', "-");
 
@@ -54,8 +56,8 @@ pub async fn handle(command: DatabaseCommands, db: &Database) -> anyhow::Result<
                 username: user,
                 password,
                 connection_string,
-                server_id: None,
-                container_id: None,
+                server_id: server.clone(),
+                container_id: container.clone(),
                 notes: None,
             };
 
@@ -66,6 +68,12 @@ pub async fn handle(command: DatabaseCommands, db: &Database) -> anyhow::Result<
             println!("  Name: {}", name);
             println!("  ID:   {}", id);
             println!("  Type: {}", db_type);
+            if let Some(s) = &server {
+                println!("  Server: {}", s);
+            }
+            if let Some(c) = &container {
+                println!("  Container: {}", c);
+            }
         }
 
         DatabaseCommands::Show { name } => {
@@ -94,6 +102,12 @@ pub async fn handle(command: DatabaseCommands, db: &Database) -> anyhow::Result<
             }
             if creds.password.is_some() {
                 println!("  Password: ********");
+            }
+            if let Some(s) = &creds.server_id {
+                println!("  Server:   {}", s);
+            }
+            if let Some(c) = &creds.container_id {
+                println!("  Container: {}", c);
             }
             println!();
         }
