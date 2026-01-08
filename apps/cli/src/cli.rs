@@ -25,7 +25,7 @@ pub async fn handle_command(
         Commands::Server { command } => handle_server_command(command, &db).await,
         Commands::Domain { command } => handle_domain_command(command, &db).await,
         Commands::Database { command } => handle_database_command(command, &db).await,
-        Commands::Script { command } => handle_script_command(command, &db).await,
+        Commands::Script { command } => handle_script_command(command, &config, &db).await,
         // Legacy commands
         Commands::Ssh { command } => handle_ssh_command(command, &config, &db).await,
         Commands::Docker { command } => handle_docker_command(command, &config, &db).await,
@@ -578,7 +578,11 @@ async fn handle_database_command(command: DatabaseCommands, db: &Database) -> an
 // v6: SCRIPT COMMAND HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow::Result<()> {
+async fn handle_script_command(
+    command: ScriptCommands,
+    config: &Config,
+    db: &Database,
+) -> anyhow::Result<()> {
     match command {
         ScriptCommands::List => {
             let scripts = db.list_scripts().await?;
@@ -587,6 +591,8 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
                 println!();
                 println!("Add one with:");
                 println!("  pctrl script add <name> -c <command> [-s server]");
+                println!("  pctrl script add <name> -c <command> -t local");
+                println!("  pctrl script add <name> -c <command> -t docker --docker-host <id> --container <id>");
             } else {
                 println!("Scripts ({}):", scripts.len());
                 println!();
@@ -607,6 +613,8 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
             script_type,
             server,
             project,
+            docker_host,
+            container,
             dangerous,
         } => {
             let id = name.to_lowercase().replace(' ', "-");
@@ -619,8 +627,10 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
                 description,
                 command: command.clone(),
                 script_type: script_type.clone(),
-                server_id: server,
+                server_id: server.clone(),
                 project_id: project,
+                docker_host_id: docker_host.clone(),
+                container_id: container.clone(),
                 dangerous,
                 last_run: None,
                 last_result: None,
@@ -634,6 +644,15 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
             println!("  ID:      {}", id);
             println!("  Type:    {}", script_type);
             println!("  Command: {}", command);
+            if let Some(s) = server {
+                println!("  Server:  {}", s);
+            }
+            if let Some(dh) = docker_host {
+                println!("  Docker:  {}", dh);
+            }
+            if let Some(c) = container {
+                println!("  Container: {}", c);
+            }
             if dangerous {
                 println!("  ⚠️  Marked as dangerous");
             }
@@ -659,8 +678,20 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
             if let Some(server) = &script.server_id {
                 println!("  Server:  {}", server);
             }
+            if let Some(dh) = &script.docker_host_id {
+                println!("  Docker:  {}", dh);
+            }
+            if let Some(c) = &script.container_id {
+                println!("  Container: {}", c);
+            }
             if let Some(project) = &script.project_id {
                 println!("  Project: {}", project);
+            }
+            if let Some(last_run) = &script.last_run {
+                println!("  Last Run: {}", last_run);
+            }
+            if let Some(result) = &script.last_result {
+                println!("  Result:  {}", result);
             }
             println!();
         }
@@ -682,7 +713,141 @@ async fn handle_script_command(command: ScriptCommands, db: &Database) -> anyhow
             println!("Running script '{}'...", script.name);
             println!("Command: {}", script.command);
             println!();
-            println!("(Script execution not yet implemented)");
+
+            let result = match script.script_type {
+                ScriptType::Local => {
+                    // Execute locally
+                    let shell = if cfg!(windows) { "cmd" } else { "sh" };
+                    let args = if cfg!(windows) {
+                        vec!["/C", &script.command]
+                    } else {
+                        vec!["-c", &script.command]
+                    };
+
+                    match std::process::Command::new(shell).args(&args).output() {
+                        Ok(output) => {
+                            let stdout = String::from_utf8_lossy(&output.stdout);
+                            let stderr = String::from_utf8_lossy(&output.stderr);
+
+                            if !stdout.is_empty() {
+                                println!("{}", stdout);
+                            }
+                            if !stderr.is_empty() {
+                                eprintln!("{}", stderr);
+                            }
+
+                            if output.status.success() {
+                                println!("✓ Script completed successfully");
+                                pctrl_core::ScriptResult::Success
+                            } else {
+                                println!(
+                                    "✗ Script failed with exit code: {}",
+                                    output.status.code().unwrap_or(-1)
+                                );
+                                pctrl_core::ScriptResult::Error
+                            }
+                        }
+                        Err(e) => {
+                            println!("✗ Failed to execute script: {}", e);
+                            pctrl_core::ScriptResult::Error
+                        }
+                    }
+                }
+
+                ScriptType::Ssh => {
+                    // Execute via SSH
+                    let server_id = script.server_id.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "SSH script requires a server_id. Use -s <server> when adding."
+                        )
+                    })?;
+
+                    // Get server to find SSH connection
+                    let server = db
+                        .get_server(server_id)
+                        .await?
+                        .or(db.get_server_by_name(server_id).await?)
+                        .ok_or_else(|| anyhow::anyhow!("Server '{}' not found", server_id))?;
+
+                    let ssh_id = server.ssh_connection_id.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!("Server '{}' has no SSH connection configured", server.name)
+                    })?;
+
+                    // Initialize SSH manager
+                    let mut ssh_manager = SshManager::new();
+                    for conn in &config.ssh_connections {
+                        ssh_manager.add_connection(conn.clone());
+                    }
+
+                    // Check if password auth is needed
+                    let password = if let Some(conn) = ssh_manager.get_connection(ssh_id) {
+                        if matches!(conn.auth_method, AuthMethod::Password) {
+                            print!("Password for {}@{}: ", conn.username, conn.host);
+                            std::io::Write::flush(&mut std::io::stdout())?;
+                            Some(rpassword::read_password()?)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    match ssh_manager.execute_command_with_password(
+                        ssh_id,
+                        &script.command,
+                        password.as_deref(),
+                    ) {
+                        Ok(output) => {
+                            println!("{}", output);
+                            println!("✓ Script completed successfully");
+                            pctrl_core::ScriptResult::Success
+                        }
+                        Err(e) => {
+                            println!("✗ SSH execution failed: {}", e);
+                            pctrl_core::ScriptResult::Error
+                        }
+                    }
+                }
+
+                ScriptType::Docker => {
+                    // Execute inside Docker container
+                    let docker_host_id = script.docker_host_id.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Docker script requires docker_host_id. Use --docker-host when adding."
+                        )
+                    })?;
+
+                    let container_id = script.container_id.as_ref().ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Docker script requires container_id. Use --container when adding."
+                        )
+                    })?;
+
+                    // Initialize Docker manager
+                    let mut docker_manager = DockerManager::new();
+                    for host in &config.docker_hosts {
+                        docker_manager.add_host(host.clone());
+                    }
+
+                    match docker_manager
+                        .exec_in_container(docker_host_id, container_id, &script.command)
+                        .await
+                    {
+                        Ok(output) => {
+                            println!("{}", output);
+                            println!("✓ Script completed successfully");
+                            pctrl_core::ScriptResult::Success
+                        }
+                        Err(e) => {
+                            println!("✗ Docker execution failed: {}", e);
+                            pctrl_core::ScriptResult::Error
+                        }
+                    }
+                }
+            };
+
+            // Update script result in database
+            db.update_script_result(&script.id, result).await?;
         }
 
         ScriptCommands::Remove { name } => {
@@ -722,6 +887,7 @@ async fn handle_ssh_command(
                 println!();
                 println!("Add one with:");
                 println!("  pctrl ssh add <name> <host> -u <user> [-k ~/.ssh/id_rsa]");
+                println!("  pctrl ssh add <name> <host> -u <user> --password");
             } else {
                 println!("SSH Connections ({}):", connections.len());
                 println!();
@@ -744,6 +910,7 @@ async fn handle_ssh_command(
             user,
             port,
             key,
+            password,
         } => {
             // ID = name (lowercase, keine Leerzeichen)
             let id = name.to_lowercase().replace(' ', "-");
@@ -753,12 +920,18 @@ async fn handle_ssh_command(
                 anyhow::bail!("Connection '{}' already exists. Use a different name.", id);
             }
 
-            // Default Key-Pfad
-            let key_path = key.unwrap_or_else(|| {
-                dirs::home_dir()
-                    .map(|h| h.join(".ssh").join("id_rsa").to_string_lossy().to_string())
-                    .unwrap_or_else(|| "~/.ssh/id_rsa".to_string())
-            });
+            // Determine auth method
+            let auth_method = if password {
+                AuthMethod::Password
+            } else {
+                // Default Key-Pfad
+                let key_path = key.unwrap_or_else(|| {
+                    dirs::home_dir()
+                        .map(|h| h.join(".ssh").join("id_rsa").to_string_lossy().to_string())
+                        .unwrap_or_else(|| "~/.ssh/id_rsa".to_string())
+                });
+                AuthMethod::PublicKey { key_path }
+            };
 
             let connection = SshConnection {
                 id: id.clone(),
@@ -766,7 +939,7 @@ async fn handle_ssh_command(
                 host: host.clone(),
                 port,
                 username: user.clone(),
-                auth_method: AuthMethod::PublicKey { key_path },
+                auth_method: auth_method.clone(),
             };
 
             // In DB speichern
@@ -778,6 +951,10 @@ async fn handle_ssh_command(
             println!("  ID:       {}", id);
             println!("  Host:     {}:{}", host, port);
             println!("  User:     {}", user);
+            match auth_method {
+                AuthMethod::Password => println!("  Auth:     password"),
+                AuthMethod::PublicKey { key_path } => println!("  Key:      {}", key_path),
+            }
             println!();
             println!("Test with: pctrl ssh connect {}", id);
         }
@@ -791,14 +968,41 @@ async fn handle_ssh_command(
         }
 
         SshCommands::Connect { id } => {
+            // Check if password auth is needed
+            let password = if let Some(conn) = ssh_manager.get_connection(&id) {
+                if matches!(conn.auth_method, AuthMethod::Password) {
+                    print!("Password for {}@{}: ", conn.username, conn.host);
+                    std::io::Write::flush(&mut std::io::stdout())?;
+                    Some(rpassword::read_password()?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             println!("Connecting to SSH host: {}", id);
-            let _session = ssh_manager.connect(&id)?;
+            let _session = ssh_manager.connect_with_password(&id, password.as_deref())?;
             println!("✓ Connected successfully");
         }
 
         SshCommands::Exec { id, command } => {
+            // Check if password auth is needed
+            let password = if let Some(conn) = ssh_manager.get_connection(&id) {
+                if matches!(conn.auth_method, AuthMethod::Password) {
+                    print!("Password for {}@{}: ", conn.username, conn.host);
+                    std::io::Write::flush(&mut std::io::stdout())?;
+                    Some(rpassword::read_password()?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             println!("Executing on {}: {}", id, command);
-            let output = ssh_manager.execute_command(&id, &command)?;
+            let output =
+                ssh_manager.execute_command_with_password(&id, &command, password.as_deref())?;
             println!("{}", output);
         }
     }

@@ -94,6 +94,40 @@ impl CoolifyManager {
     pub fn list_instances(&self) -> &[CoolifyInstance] {
         &self.instances
     }
+
+    /// Get an instance by ID
+    pub fn get_instance(&self, id: &str) -> Option<&CoolifyInstance> {
+        self.instances.iter().find(|i| i.id == id)
+    }
+
+    /// Health check - verify connection to Coolify instance
+    pub async fn health_check(&self, instance_id: &str) -> Result<()> {
+        let instance = self
+            .instances
+            .iter()
+            .find(|i| i.id == instance_id)
+            .ok_or_else(|| pctrl_core::Error::Coolify("Instance not found".to_string()))?;
+
+        // Try to reach the API endpoint with a timeout
+        let url = format!("{}/api/v1/deployments", instance.url);
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", instance.api_key))
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| pctrl_core::Error::Coolify(format!("Health check failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            return Err(pctrl_core::Error::Coolify(format!(
+                "Health check failed with status: {}",
+                response.status()
+            )));
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for CoolifyManager {

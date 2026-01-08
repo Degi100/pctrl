@@ -305,6 +305,10 @@ pub struct Script {
     pub script_type: ScriptType,
     pub server_id: Option<String>,
     pub project_id: Option<String>,
+    /// Docker host ID for docker scripts
+    pub docker_host_id: Option<String>,
+    /// Container ID/name for docker scripts
+    pub container_id: Option<String>,
     pub dangerous: bool,
     pub last_run: Option<String>,
     pub last_result: Option<ScriptResult>,

@@ -21,6 +21,7 @@ authors = ["pctrl contributors"]
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 async-trait = "0.1"
+futures-util = "0.3"
 
 # CLI
 clap = { version = "4.4", features = ["derive"] }
@@ -55,6 +56,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
 # Error handling
 anyhow = "1.0"
 thiserror = "1.0"
@@ -62,3 +66,6 @@ thiserror = "1.0"
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Password input
+rpassword = "7.3"

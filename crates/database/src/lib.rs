@@ -219,12 +219,15 @@ impl Database {
                 script_type TEXT DEFAULT 'ssh',
                 server_id TEXT,
                 project_id TEXT,
+                docker_host_id TEXT,
+                container_id TEXT,
                 dangerous INTEGER DEFAULT 0,
                 last_run DATETIME,
                 last_result TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (server_id) REFERENCES servers(id),
-                FOREIGN KEY (project_id) REFERENCES projects(id)
+                FOREIGN KEY (project_id) REFERENCES projects(id),
+                FOREIGN KEY (docker_host_id) REFERENCES docker_hosts(id)
             );
 
             -- ═══════════════════════════════════════════════════════════════
@@ -1301,8 +1304,8 @@ impl Database {
         let last_result = script.last_result.as_ref().map(|r| r.to_string());
 
         sqlx::query(
-            "INSERT OR REPLACE INTO scripts (id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO scripts (id, name, description, command, script_type, server_id, project_id, docker_host_id, container_id, dangerous, last_run, last_result)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&script.id)
         .bind(&script.name)
@@ -1311,6 +1314,8 @@ impl Database {
         .bind(script.script_type.to_string())
         .bind(&script.server_id)
         .bind(&script.project_id)
+        .bind(&script.docker_host_id)
+        .bind(&script.container_id)
         .bind(script.dangerous)
         .bind(&script.last_run)
         .bind(&last_result)
@@ -1323,8 +1328,8 @@ impl Database {
 
     /// Get a script by ID
     pub async fn get_script(&self, id: &str) -> Result<Option<pctrl_core::Script>> {
-        let row: Option<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts WHERE id = ?")
+        let row: Option<(String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, docker_host_id, container_id, dangerous, last_run, last_result FROM scripts WHERE id = ?")
                 .bind(id)
                 .fetch_optional(&self.pool)
                 .await
@@ -1338,6 +1343,8 @@ impl Database {
             script_type,
             server_id,
             project_id,
+            docker_host_id,
+            container_id,
             dangerous,
             last_run,
             last_result,
@@ -1358,6 +1365,8 @@ impl Database {
                 script_type,
                 server_id,
                 project_id,
+                docker_host_id,
+                container_id,
                 dangerous,
                 last_run,
                 last_result,
@@ -1369,8 +1378,8 @@ impl Database {
 
     /// List all scripts
     pub async fn list_scripts(&self) -> Result<Vec<pctrl_core::Script>> {
-        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts ORDER BY name")
+        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, docker_host_id, container_id, dangerous, last_run, last_result FROM scripts ORDER BY name")
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
@@ -1386,6 +1395,8 @@ impl Database {
                     script_type,
                     server_id,
                     project_id,
+                    docker_host_id,
+                    container_id,
                     dangerous,
                     last_run,
                     last_result,
@@ -1405,6 +1416,8 @@ impl Database {
                         script_type,
                         server_id,
                         project_id,
+                        docker_host_id,
+                        container_id,
                         dangerous,
                         last_run,
                         last_result,
@@ -1421,8 +1434,8 @@ impl Database {
         &self,
         project_id: &str,
     ) -> Result<Vec<pctrl_core::Script>> {
-        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts WHERE project_id = ? ORDER BY name")
+        let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, docker_host_id, container_id, dangerous, last_run, last_result FROM scripts WHERE project_id = ? ORDER BY name")
                 .bind(project_id)
                 .fetch_all(&self.pool)
                 .await
@@ -1439,6 +1452,8 @@ impl Database {
                     script_type,
                     server_id,
                     project_id,
+                    docker_host_id,
+                    container_id,
                     dangerous,
                     last_run,
                     last_result,
@@ -1458,6 +1473,8 @@ impl Database {
                         script_type,
                         server_id,
                         project_id,
+                        docker_host_id,
+                        container_id,
                         dangerous,
                         last_run,
                         last_result,
@@ -1478,6 +1495,26 @@ impl Database {
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         Ok(result.rows_affected() > 0)
+    }
+
+    /// Update script execution result
+    pub async fn update_script_result(
+        &self,
+        id: &str,
+        result: pctrl_core::ScriptResult,
+    ) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        let result_str = result.to_string();
+
+        sqlx::query("UPDATE scripts SET last_run = ?, last_result = ? WHERE id = ?")
+            .bind(&now)
+            .bind(&result_str)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
     }
 
     // ═══════════════════════════════════════════════════════════════════════════

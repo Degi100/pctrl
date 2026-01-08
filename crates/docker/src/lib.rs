@@ -1,5 +1,7 @@
 use bollard::container::{ListContainersOptions, StartContainerOptions, StopContainerOptions};
+use bollard::exec::{CreateExecOptions, StartExecResults};
 use bollard::Docker;
+use futures_util::StreamExt;
 use pctrl_core::{DockerHost, Result};
 use serde::{Deserialize, Serialize};
 
@@ -98,6 +100,73 @@ impl DockerManager {
     /// List all hosts
     pub fn list_hosts(&self) -> &[DockerHost] {
         &self.hosts
+    }
+
+    /// Get a host by ID
+    pub fn get_host(&self, id: &str) -> Option<&DockerHost> {
+        self.hosts.iter().find(|h| h.id == id)
+    }
+
+    /// Execute a command inside a container
+    pub async fn exec_in_container(
+        &self,
+        host_id: &str,
+        container_id: &str,
+        command: &str,
+    ) -> Result<String> {
+        let docker = self.connect(host_id)?;
+
+        // Parse command into args (simple split by whitespace)
+        let cmd: Vec<&str> = command.split_whitespace().collect();
+
+        // Create exec instance
+        let exec = docker
+            .create_exec(
+                container_id,
+                CreateExecOptions {
+                    attach_stdout: Some(true),
+                    attach_stderr: Some(true),
+                    cmd: Some(cmd),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|e| pctrl_core::Error::Docker(format!("Failed to create exec: {}", e)))?;
+
+        // Start exec and collect output
+        let output = docker
+            .start_exec(&exec.id, None)
+            .await
+            .map_err(|e| pctrl_core::Error::Docker(format!("Failed to start exec: {}", e)))?;
+
+        let mut result = String::new();
+        if let StartExecResults::Attached { mut output, .. } = output {
+            while let Some(chunk) = output.next().await {
+                match chunk {
+                    Ok(bollard::container::LogOutput::StdOut { message }) => {
+                        result.push_str(&String::from_utf8_lossy(&message));
+                    }
+                    Ok(bollard::container::LogOutput::StdErr { message }) => {
+                        result.push_str(&String::from_utf8_lossy(&message));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Health check - verify connection to Docker host
+    pub async fn health_check(&self, host_id: &str) -> Result<()> {
+        let docker = self.connect(host_id)?;
+
+        docker
+            .ping()
+            .await
+            .map_err(|e| pctrl_core::Error::Docker(format!("Health check failed: {}", e)))?;
+
+        Ok(())
     }
 }
 

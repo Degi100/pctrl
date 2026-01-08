@@ -312,12 +312,18 @@ pub enum ScriptCommands {
         /// Script type: ssh, local, docker
         #[arg(short = 't', long, default_value = "ssh")]
         script_type: String,
-        /// Server ID to run on
+        /// Server ID to run on (for ssh scripts)
         #[arg(short, long)]
         server: Option<String>,
         /// Project ID (optional)
         #[arg(short, long)]
         project: Option<String>,
+        /// Docker host ID (for docker scripts)
+        #[arg(long)]
+        docker_host: Option<String>,
+        /// Container ID/name (for docker scripts)
+        #[arg(long)]
+        container: Option<String>,
         /// Mark as dangerous (requires confirmation)
         #[arg(long)]
         dangerous: bool,
@@ -358,9 +364,12 @@ pub enum SshCommands {
         /// Port (default: 22)
         #[arg(short, long, default_value = "22")]
         port: u16,
-        /// Path to private key (default: ~/.ssh/id_rsa)
+        /// Path to private key (omit for password auth)
         #[arg(short, long)]
         key: Option<String>,
+        /// Use password authentication (instead of public key)
+        #[arg(long)]
+        password: bool,
     },
     /// Remove an SSH connection
     Remove {
