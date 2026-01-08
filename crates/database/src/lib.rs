@@ -32,16 +32,12 @@ impl Database {
             .await
             .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
+        // Initialize metadata table first (needed for salt storage)
+        Self::init_metadata_table(&pool).await?;
+
         let (cipher, salt) = if let Some(pwd) = password {
-            // TODO: In production, the salt should be randomly generated during
-            // database creation and stored in a metadata table, then retrieved on
-            // subsequent opens. For now, we use a deterministic salt for simplicity.
-            // This allows the same password to consistently decrypt the database.
-            let salt_string = format!("pctrl-salt-{}", path);
-            let salt_bytes = salt_string.as_bytes();
-            let mut salt = [0u8; 16];
-            let copy_len = 16.min(salt_bytes.len());
-            salt[..copy_len].copy_from_slice(&salt_bytes[..copy_len]);
+            // Get or create a cryptographically secure random salt
+            let salt = Self::get_or_create_salt(&pool).await?;
 
             let key = Self::derive_key(pwd, &salt)?;
             (Some(Aes256Gcm::new(&key.into())), Some(salt.to_vec()))
@@ -56,6 +52,57 @@ impl Database {
         };
         db.init_schema().await?;
         Ok(db)
+    }
+
+    /// Initialize metadata table for storing encryption salt
+    async fn init_metadata_table(pool: &SqlitePool) -> Result<()> {
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS metadata (
+                key TEXT PRIMARY KEY,
+                value BLOB NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            "#,
+        )
+        .execute(pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get existing salt or create a new random one
+    async fn get_or_create_salt(pool: &SqlitePool) -> Result<[u8; 16]> {
+        // Try to get existing salt
+        let row: Option<(Vec<u8>,)> =
+            sqlx::query_as("SELECT value FROM metadata WHERE key = 'encryption_salt'")
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        if let Some((salt_bytes,)) = row {
+            // Salt exists, use it
+            if salt_bytes.len() >= 16 {
+                let mut salt = [0u8; 16];
+                salt.copy_from_slice(&salt_bytes[..16]);
+                return Ok(salt);
+            }
+        }
+
+        // Generate new random salt
+        use rand::RngCore;
+        let mut salt = [0u8; 16];
+        rand::rngs::OsRng.fill_bytes(&mut salt);
+
+        // Store the salt
+        sqlx::query("INSERT OR REPLACE INTO metadata (key, value) VALUES ('encryption_salt', ?)")
+            .bind(salt.as_slice())
+            .execute(pool)
+            .await
+            .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+
+        Ok(salt)
     }
 
     /// Initialize database schema

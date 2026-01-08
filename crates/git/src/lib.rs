@@ -1,3 +1,4 @@
+use chrono::{TimeZone, Utc};
 use git2::Repository;
 use pctrl_core::{GitRepo, Result};
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,14 @@ pub struct Release {
     pub tag: String,
     pub message: String,
     pub date: String,
+}
+
+/// Format a Unix timestamp as a readable date string
+fn format_timestamp(seconds: i64) -> String {
+    match Utc.timestamp_opt(seconds, 0) {
+        chrono::LocalResult::Single(dt) => dt.format("%Y-%m-%d %H:%M").to_string(),
+        _ => String::new(),
+    }
 }
 
 /// Git manager
@@ -56,12 +65,26 @@ impl GitManager {
                     .unwrap_or("")
                     .to_string();
 
-                // TODO: Extract date from commit or tag object
-                let date = tag
-                    .as_ref()
-                    .map(|t| t.tagger())
-                    .and_then(|s| s.map(|sig| sig.when().seconds().to_string()))
-                    .unwrap_or_default();
+                // Get date: try annotated tag date first, then fall back to commit date
+                let date = {
+                    // First try: get tagger date from annotated tag
+                    let tag_timestamp = tag
+                        .as_ref()
+                        .and_then(|t| t.tagger())
+                        .map(|sig| sig.when().seconds());
+
+                    // Second try: get commit date by peeling to commit
+                    let commit_timestamp = obj.peel_to_commit().ok().map(|c| c.time().seconds());
+
+                    // Use tag timestamp if available, otherwise commit timestamp
+                    let timestamp = tag_timestamp.or(commit_timestamp);
+
+                    // Format the timestamp as a readable date
+                    match timestamp {
+                        Some(secs) => format_timestamp(secs),
+                        None => String::new(),
+                    }
+                };
 
                 releases.push(Release {
                     name: tag_name.to_string(),
