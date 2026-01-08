@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,

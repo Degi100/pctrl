@@ -343,7 +343,7 @@ pub enum ScriptCommands {
 }
 
 #[derive(Subcommand)]
-enum SshCommands {
+pub enum SshCommands {
     /// List SSH connections
     List,
     /// Add a new SSH connection
@@ -374,7 +374,7 @@ enum SshCommands {
 }
 
 #[derive(Subcommand)]
-enum DockerCommands {
+pub enum DockerCommands {
     /// List configured Docker hosts
     Hosts,
     /// Add a new Docker host
@@ -402,7 +402,7 @@ enum DockerCommands {
 }
 
 #[derive(Subcommand)]
-enum CoolifyCommands {
+pub enum CoolifyCommands {
     /// List configured Coolify instances
     Instances,
     /// Add a new Coolify instance
@@ -428,7 +428,7 @@ enum CoolifyCommands {
 }
 
 #[derive(Subcommand)]
-enum GitCommands {
+pub enum GitCommands {
     /// List configured Git repositories
     Repos,
     /// Add a Git repository

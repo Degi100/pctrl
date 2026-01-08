@@ -38,18 +38,13 @@ pub struct Project {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ProjectStatus {
+    #[default]
     Dev,
     Staging,
     Live,
     Archived,
-}
-
-impl Default for ProjectStatus {
-    fn default() -> Self {
-        Self::Dev
-    }
 }
 
 impl fmt::Display for ProjectStatus {
@@ -101,18 +96,13 @@ pub struct ServerSpecs {
     pub disk_gb: Option<u32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ServerType {
+    #[default]
     Vps,
     Dedicated,
     Local,
     Cloud,
-}
-
-impl Default for ServerType {
-    fn default() -> Self {
-        Self::Vps
-    }
 }
 
 impl fmt::Display for ServerType {
@@ -158,17 +148,12 @@ pub struct Domain {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum DomainType {
+    #[default]
     Production,
     Staging,
     Dev,
-}
-
-impl Default for DomainType {
-    fn default() -> Self {
-        Self::Production
-    }
 }
 
 impl fmt::Display for DomainType {
@@ -214,19 +199,14 @@ pub struct DatabaseCredentials {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum DatabaseType {
     MongoDB,
+    #[default]
     PostgreSQL,
     MySQL,
     Redis,
     SQLite,
-}
-
-impl Default for DatabaseType {
-    fn default() -> Self {
-        Self::PostgreSQL
-    }
 }
 
 impl fmt::Display for DatabaseType {
@@ -273,20 +253,15 @@ pub struct Container {
     pub labels: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ContainerStatus {
     Running,
     Stopped,
     Restarting,
     Paused,
     Exited,
+    #[default]
     Unknown,
-}
-
-impl Default for ContainerStatus {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 impl fmt::Display for ContainerStatus {
@@ -335,17 +310,12 @@ pub struct Script {
     pub last_result: Option<ScriptResult>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum ScriptType {
+    #[default]
     Ssh,
     Local,
     Docker,
-}
-
-impl Default for ScriptType {
-    fn default() -> Self {
-        Self::Ssh
-    }
 }
 
 impl fmt::Display for ScriptType {
