@@ -1,0 +1,627 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { fetchDocs, groupByCategory, categoryNames } from '../../utils/docs-api';
+
+// Fetch docs at build time
+const docs = await fetchDocs();
+const grouped = groupByCategory(docs);
+const categoryOrder = ['getting-started', 'commands', 'guides'];
+
+// Category metadata
+const categoryMeta: Record<string, { icon: string; description: string; color: string }> = {
+  'getting-started': {
+    icon: '🚀',
+    description: 'Get up and running with pctrl in minutes',
+    color: '#00c853'
+  },
+  'commands': {
+    icon: '⌨️',
+    description: 'Complete reference for all CLI commands',
+    color: '#667eea'
+  },
+  'guides': {
+    icon: '📖',
+    description: 'In-depth guides and best practices',
+    color: '#ff9f43'
+  }
+};
+---
+
+<Layout title="Documentation - pctrl">
+  <main class="docs-page">
+    <!-- Animated Background -->
+    <div class="bg-grid"></div>
+
+    <!-- Header -->
+    <header class="docs-header">
+      <div class="container">
+        <nav class="docs-nav">
+          <a href="/" class="logo">
+            <span class="logo-text">pctrl</span>
+          </a>
+          <a href="https://github.com/Degi100/pctrl" class="github-link" target="_blank">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+            GitHub
+          </a>
+        </nav>
+
+        <div class="header-content">
+          <div class="header-badge">Documentation</div>
+          <h1>Learn pctrl</h1>
+          <p class="header-description">
+            Everything you need to manage your servers, containers, and deployments from one unified interface.
+          </p>
+
+          <!-- Search (visual only for now) -->
+          <div class="search-box">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input type="text" placeholder="Search documentation..." disabled />
+            <span class="search-hint">Coming soon</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Quick Links -->
+    <section class="quick-links">
+      <div class="container">
+        <div class="quick-grid">
+          <a href="/docs/installation" class="quick-card">
+            <div class="quick-icon">📥</div>
+            <div class="quick-content">
+              <h3>Installation</h3>
+              <p>Get pctrl installed on your system</p>
+            </div>
+          </a>
+          <a href="/docs/quickstart" class="quick-card">
+            <div class="quick-icon">⚡</div>
+            <div class="quick-content">
+              <h3>Quick Start</h3>
+              <p>Start managing in 5 minutes</p>
+            </div>
+          </a>
+          <a href="/docs/ssh-commands" class="quick-card">
+            <div class="quick-icon">🔐</div>
+            <div class="quick-content">
+              <h3>SSH Commands</h3>
+              <p>Connect to your servers</p>
+            </div>
+          </a>
+          <a href="/docs/docker-commands" class="quick-card">
+            <div class="quick-icon">🐳</div>
+            <div class="quick-content">
+              <h3>Docker Commands</h3>
+              <p>Manage containers</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container docs-container">
+      {docs.length === 0 ? (
+        <div class="empty-state">
+          <div class="empty-icon">📚</div>
+          <h2>Documentation Coming Soon</h2>
+          <p>We're working on comprehensive documentation. In the meantime, check out the <a href="https://github.com/Degi100/pctrl/blob/main/QUICKSTART.md">Quick Start Guide</a> on GitHub.</p>
+        </div>
+      ) : (
+        <div class="docs-grid">
+          {categoryOrder.map(category => {
+            const categoryDocs = grouped[category];
+            const meta = categoryMeta[category];
+            if (!categoryDocs || categoryDocs.length === 0) return null;
+
+            return (
+              <section class="category-section">
+                <div class="category-header">
+                  <div class="category-icon-wrapper" style={`--cat-color: ${meta.color}`}>
+                    <span class="category-icon">{meta.icon}</span>
+                  </div>
+                  <div class="category-info">
+                    <h2 class="category-title">{categoryNames[category] || category}</h2>
+                    <p class="category-description">{meta.description}</p>
+                  </div>
+                  <span class="category-count">{categoryDocs.length} docs</span>
+                </div>
+                <div class="docs-list">
+                  {categoryDocs.sort((a, b) => a.order - b.order).map((doc, index) => (
+                    <a href={`/docs/${doc.slug}`} class="doc-card" style={`--delay: ${index * 0.05}s`}>
+                      <div class="doc-number">{String(index + 1).padStart(2, '0')}</div>
+                      <div class="doc-info">
+                        <h3>{doc.title}</h3>
+                      </div>
+                      <div class="doc-arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+
+    <!-- Footer -->
+    <footer class="docs-footer">
+      <div class="container">
+        <div class="footer-content">
+          <p>Made with 🦀 Rust & ❤️ by <a href="https://github.com/Degi100">degidev</a></p>
+          <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="https://github.com/Degi100/pctrl">GitHub</a>
+            <a href="https://github.com/Degi100/pctrl/issues">Issues</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  :root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --accent: #00d4ff;
+    --success: #00c853;
+    --dark: #0a0a0f;
+    --darker: #050508;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  }
+
+  .docs-page {
+    min-height: 100vh;
+    background: var(--darker);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Animated Grid Background */
+  .bg-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+      linear-gradient(rgba(102, 126, 234, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(102, 126, 234, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Navigation */
+  .docs-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 0;
+  }
+
+  .logo {
+    text-decoration: none;
+  }
+
+  .logo-text {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .github-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+
+  .github-link:hover {
+    color: white;
+    background: var(--glass);
+  }
+
+  /* Header */
+  .docs-header {
+    padding-bottom: 4rem;
+    background: radial-gradient(ellipse at top, rgba(102, 126, 234, 0.15) 0%, transparent 50%);
+  }
+
+  .header-content {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+    padding-top: 2rem;
+  }
+
+  .header-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+  }
+
+  .docs-header h1 {
+    color: white;
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    line-height: 1.1;
+  }
+
+  .header-description {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+  }
+
+  /* Search Box */
+  .search-box {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s;
+  }
+
+  .search-box input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+  }
+
+  .search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .search-hint {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.8rem;
+  }
+
+  /* Quick Links */
+  .quick-links {
+    margin-top: -2rem;
+    padding-bottom: 3rem;
+  }
+
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  .quick-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .quick-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+  }
+
+  .quick-icon {
+    font-size: 1.5rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass);
+    border-radius: 10px;
+  }
+
+  .quick-content h3 {
+    color: white;
+    font-size: 0.95rem;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .quick-content p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    margin: 0;
+  }
+
+  /* Main Content */
+  .docs-container {
+    padding: 2rem 2rem 4rem;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state h2 {
+    color: white;
+    margin-bottom: 1rem;
+  }
+
+  .empty-state p {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .empty-state a {
+    color: var(--accent);
+  }
+
+  .docs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  /* Category Section */
+  .category-section {
+    background: var(--dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    background: var(--glass);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .category-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid var(--cat-color, var(--primary));
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.1);
+  }
+
+  .category-icon {
+    font-size: 1.5rem;
+  }
+
+  .category-info {
+    flex: 1;
+  }
+
+  .category-title {
+    color: white;
+    font-size: 1.25rem;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .category-description {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .category-count {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--glass);
+    border-radius: 20px;
+  }
+
+  /* Doc Cards */
+  .docs-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .doc-card {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.25rem 2rem;
+    text-decoration: none;
+    border-bottom: 1px solid var(--glass-border);
+    transition: all 0.2s ease;
+    animation: fadeIn 0.3s ease var(--delay, 0s) both;
+  }
+
+  .doc-card:last-child {
+    border-bottom: none;
+  }
+
+  .doc-card:hover {
+    background: rgba(102, 126, 234, 0.05);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .doc-number {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.3);
+    width: 28px;
+  }
+
+  .doc-info {
+    flex: 1;
+  }
+
+  .doc-info h3 {
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+    transition: color 0.2s;
+  }
+
+  .doc-card:hover .doc-info h3 {
+    color: var(--accent);
+  }
+
+  .doc-arrow {
+    color: rgba(255, 255, 255, 0.3);
+    transition: all 0.2s;
+  }
+
+  .doc-card:hover .doc-arrow {
+    color: var(--accent);
+    transform: translateX(5px);
+  }
+
+  /* Footer */
+  .docs-footer {
+    border-top: 1px solid var(--glass-border);
+    padding: 2rem 0;
+    margin-top: 4rem;
+  }
+
+  .footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-content p {
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0;
+  }
+
+  .footer-content a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 2rem;
+  }
+
+  .footer-links a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover {
+    color: white;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .quick-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .docs-header h1 {
+      font-size: 2.5rem;
+    }
+
+    .quick-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .category-header {
+      flex-wrap: wrap;
+    }
+
+    .category-count {
+      margin-left: auto;
+    }
+
+    .doc-card {
+      padding: 1rem 1.5rem;
+    }
+
+    .footer-content {
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+  }
+</style>

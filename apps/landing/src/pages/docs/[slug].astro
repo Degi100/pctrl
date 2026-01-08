@@ -1,0 +1,830 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { fetchDocs, fetchDoc, categoryNames, groupByCategory } from '../../utils/docs-api';
+import { markdownToHtml } from '../../utils/markdown';
+
+// Generate all doc pages at build time
+export async function getStaticPaths() {
+  const docs = await fetchDocs();
+  return docs.map(doc => ({
+    params: { slug: doc.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+const doc = await fetchDoc(slug as string);
+const allDocs = await fetchDocs();
+
+// Group docs by category for sidebar
+const groupedDocs = groupByCategory(allDocs);
+const categoryOrder = ['getting-started', 'commands', 'guides'];
+
+// Category icons
+const categoryIcons: Record<string, string> = {
+  'getting-started': '🚀',
+  'commands': '⌨️',
+  'guides': '📖'
+};
+
+// Find next and previous docs
+const sortedDocs = [...allDocs].sort((a, b) => a.order - b.order);
+const currentIndex = sortedDocs.findIndex(d => d.slug === slug);
+const prevDoc = currentIndex > 0 ? sortedDocs[currentIndex - 1] : null;
+const nextDoc = currentIndex < sortedDocs.length - 1 ? sortedDocs[currentIndex + 1] : null;
+
+// Convert markdown content to HTML
+const contentHtml = doc ? markdownToHtml(doc.content) : '';
+
+if (!doc) {
+  return Astro.redirect('/docs');
+}
+---
+
+<Layout title={`${doc.title} - pctrl Documentation`}>
+  <div class="doc-layout">
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12h18M3 6h18M3 18h18"/>
+        </svg>
+      </button>
+      <a href="/" class="mobile-logo">pctrl</a>
+      <a href="https://github.com/Degi100/pctrl" class="mobile-github" target="_blank">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+        </svg>
+      </a>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a href="/" class="logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">pctrl</span>
+        </a>
+        <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/docs" class="nav-home">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          All Documentation
+        </a>
+
+        {categoryOrder.map(category => {
+          const docs = groupedDocs[category];
+          if (!docs || docs.length === 0) return null;
+          return (
+            <div class="nav-category">
+              <div class="category-label">
+                <span class="category-icon">{categoryIcons[category]}</span>
+                {categoryNames[category] || category}
+              </div>
+              <ul>
+                {docs.sort((a, b) => a.order - b.order).map(d => (
+                  <li class={d.slug === slug ? 'active' : ''}>
+                    <a href={`/docs/${d.slug}`}>
+                      <span class="nav-dot"></span>
+                      {d.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="https://github.com/Degi100/pctrl" target="_blank" class="sidebar-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="doc-main">
+      <!-- Breadcrumbs -->
+      <nav class="breadcrumbs">
+        <a href="/">Home</a>
+        <span class="separator">/</span>
+        <a href="/docs">Docs</a>
+        <span class="separator">/</span>
+        <a href={`/docs?category=${doc.category}`}>{categoryNames[doc.category] || doc.category}</a>
+        <span class="separator">/</span>
+        <span class="current">{doc.title}</span>
+      </nav>
+
+      <article class="doc-content">
+        <header class="doc-header">
+          <div class="header-meta">
+            <span class="doc-category">
+              <span class="category-icon">{categoryIcons[doc.category]}</span>
+              {categoryNames[doc.category] || doc.category}
+            </span>
+          </div>
+          <h1>{doc.title}</h1>
+        </header>
+
+        <div class="prose" set:html={contentHtml} />
+
+        <!-- Navigation -->
+        <footer class="doc-footer">
+          <div class="doc-nav">
+            {prevDoc ? (
+              <a href={`/docs/${prevDoc.slug}`} class="nav-link prev">
+                <span class="nav-direction">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                  Previous
+                </span>
+                <span class="nav-title">{prevDoc.title}</span>
+              </a>
+            ) : <div></div>}
+            {nextDoc && (
+              <a href={`/docs/${nextDoc.slug}`} class="nav-link next">
+                <span class="nav-direction">
+                  Next
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+                <span class="nav-title">{nextDoc.title}</span>
+              </a>
+            )}
+          </div>
+        </footer>
+      </article>
+
+      <!-- Footer -->
+      <div class="page-footer">
+        <p>Made with 🦀 Rust & ❤️ by <a href="https://github.com/Degi100">degidev</a></p>
+      </div>
+    </main>
+  </div>
+</Layout>
+
+<script>
+  // Mobile menu toggle
+  const menuToggle = document.getElementById('menuToggle');
+  const sidebarClose = document.getElementById('sidebarClose');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  function openSidebar() {
+    sidebar?.classList.add('open');
+    overlay?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSidebar() {
+    sidebar?.classList.remove('open');
+    overlay?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  menuToggle?.addEventListener('click', openSidebar);
+  sidebarClose?.addEventListener('click', closeSidebar);
+  overlay?.addEventListener('click', closeSidebar);
+
+  // Copy button for code blocks
+  document.querySelectorAll('pre').forEach(pre => {
+    const button = document.createElement('button');
+    button.className = 'copy-btn';
+    button.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>`;
+    button.addEventListener('click', async () => {
+      const code = pre.querySelector('code')?.textContent || '';
+      await navigator.clipboard.writeText(code);
+      button.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>`;
+      setTimeout(() => {
+        button.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>`;
+      }, 2000);
+    });
+    pre.style.position = 'relative';
+    pre.appendChild(button);
+  });
+</script>
+
+<style>
+  :root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --accent: #00d4ff;
+    --success: #00c853;
+    --dark: #0a0a0f;
+    --darker: #050508;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    --sidebar-width: 280px;
+  }
+
+  .doc-layout {
+    display: flex;
+    min-height: 100vh;
+    background: var(--darker);
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--dark);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 0 1rem;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 200;
+  }
+
+  .menu-toggle {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+
+  .mobile-logo {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-decoration: none;
+  }
+
+  .mobile-github {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.5rem;
+  }
+
+  /* Sidebar Overlay */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 150;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .sidebar-overlay.open {
+    opacity: 1;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--dark);
+    border-right: 1px solid var(--glass-border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    font-size: 1.25rem;
+  }
+
+  .logo-text {
+    font-family: 'Fira Code', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .sidebar-close {
+    display: none;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 0.5rem;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+  }
+
+  .nav-home {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+  }
+
+  .nav-home:hover {
+    background: var(--glass);
+  }
+
+  .nav-category {
+    margin-bottom: 1.5rem;
+  }
+
+  .category-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.5rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .category-icon {
+    font-size: 0.85rem;
+  }
+
+  .nav-category ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav-category li a {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.2s;
+  }
+
+  .nav-category li a:hover {
+    color: white;
+    background: var(--glass);
+  }
+
+  .nav-category li a:hover .nav-dot {
+    background: var(--accent);
+  }
+
+  .nav-category li.active a {
+    color: white;
+    background: rgba(102, 126, 234, 0.15);
+    border-left-color: var(--primary);
+  }
+
+  .nav-category li.active .nav-dot {
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--primary);
+  }
+
+  .sidebar-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+  }
+
+  .sidebar-link:hover {
+    color: white;
+  }
+
+  /* Main Content */
+  .doc-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Breadcrumbs */
+  .breadcrumbs {
+    padding: 1rem 3rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--dark);
+  }
+
+  .breadcrumbs a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--accent);
+  }
+
+  .breadcrumbs .separator {
+    margin: 0 0.5rem;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .breadcrumbs .current {
+    color: white;
+  }
+
+  /* Doc Content */
+  .doc-content {
+    flex: 1;
+    max-width: 850px;
+    padding: 3rem;
+  }
+
+  .doc-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .header-meta {
+    margin-bottom: 1rem;
+  }
+
+  .doc-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .doc-header h1 {
+    color: white;
+    font-size: 2.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  /* Prose Styles */
+  .prose {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.8;
+    font-size: 1.05rem;
+  }
+
+  .prose :global(h1) {
+    color: white;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 3rem 0 1.5rem;
+  }
+
+  .prose :global(h2) {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .prose :global(h3) {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 2rem 0 0.75rem;
+  }
+
+  .prose :global(p) {
+    margin: 1.25rem 0;
+  }
+
+  .prose :global(a) {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .prose :global(a:hover) {
+    border-bottom-color: var(--accent);
+  }
+
+  .prose :global(code) {
+    background: rgba(0, 212, 255, 0.1);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+    color: var(--accent);
+  }
+
+  .prose :global(pre) {
+    background: #0d1117;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    position: relative;
+  }
+
+  .prose :global(pre code) {
+    background: none;
+    padding: 0;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .prose :global(pre .copy-btn) {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+  }
+
+  .prose :global(pre:hover .copy-btn) {
+    opacity: 1;
+  }
+
+  .prose :global(pre .copy-btn:hover) {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 1.25rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .prose :global(li) {
+    margin: 0.5rem 0;
+  }
+
+  .prose :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+  }
+
+  .prose :global(th),
+  .prose :global(td) {
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--glass-border);
+    text-align: left;
+  }
+
+  .prose :global(th) {
+    background: var(--glass);
+    color: white;
+    font-weight: 600;
+  }
+
+  .prose :global(tr:nth-child(even)) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .prose :global(hr) {
+    border: none;
+    border-top: 1px solid var(--glass-border);
+    margin: 2.5rem 0;
+  }
+
+  .prose :global(strong) {
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Doc Footer Navigation */
+  .doc-footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .doc-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.3s;
+    min-width: 200px;
+    max-width: 300px;
+  }
+
+  .nav-link:hover {
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .nav-link.next {
+    text-align: right;
+    margin-left: auto;
+  }
+
+  .nav-direction {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .nav-link.next .nav-direction {
+    justify-content: flex-end;
+  }
+
+  .nav-title {
+    color: white;
+    font-weight: 500;
+    font-size: 1rem;
+  }
+
+  /* Page Footer */
+  .page-footer {
+    padding: 2rem 3rem;
+    border-top: 1px solid var(--glass-border);
+    text-align: center;
+  }
+
+  .page-footer p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .page-footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    .doc-content {
+      padding: 2rem;
+    }
+
+    .breadcrumbs {
+      padding: 1rem 2rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .mobile-header {
+      display: flex;
+    }
+
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-close {
+      display: block;
+    }
+
+    .sidebar-overlay {
+      display: block;
+    }
+
+    .doc-main {
+      margin-left: 0;
+      padding-top: 60px;
+    }
+
+    .doc-content {
+      padding: 1.5rem;
+    }
+
+    .breadcrumbs {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.8rem;
+    }
+
+    .doc-header h1 {
+      font-size: 2rem;
+    }
+
+    .doc-nav {
+      flex-direction: column;
+    }
+
+    .nav-link {
+      max-width: none;
+    }
+
+    .nav-link.next {
+      text-align: left;
+    }
+
+    .nav-link.next .nav-direction {
+      justify-content: flex-start;
+    }
+
+    .page-footer {
+      padding: 1.5rem;
+    }
+  }
+</style>
