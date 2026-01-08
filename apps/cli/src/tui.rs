@@ -3,10 +3,13 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use pctrl_coolify::CoolifyManager;
 use pctrl_core::{
     AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, Project, ProjectStatus, SshConnection,
 };
 use pctrl_database::Database;
+use pctrl_docker::DockerManager;
+use pctrl_ssh::SshManager;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -19,6 +22,7 @@ use std::collections::HashMap;
 use std::io;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 use uuid::Uuid;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -75,6 +79,8 @@ struct App {
     // Input mode
     input_mode: InputMode,
     input_form: InputForm,
+    // Connection checking state
+    checking_connections: bool,
 }
 
 impl App {
@@ -112,6 +118,7 @@ impl App {
             git_status,
             input_mode: InputMode::Normal,
             input_form: InputForm::default(),
+            checking_connections: false,
         }
     }
 
@@ -222,9 +229,11 @@ impl App {
         }
     }
 
-    /// Check all connections and update their status
-    fn check_all_connections(&mut self) {
-        // Check Git repos (simple path existence check)
+    /// Check all connections and update their status (async version)
+    async fn check_all_connections(&mut self) {
+        self.checking_connections = true;
+
+        // Check Git repos (simple path existence check - fast, synchronous)
         for repo in &self.config.git_repos {
             let status = if Path::new(&repo.path).exists() {
                 ConnectionStatus::Online
@@ -234,25 +243,28 @@ impl App {
             self.git_status.insert(repo.id.clone(), status);
         }
 
-        // Check Docker hosts (basic URL validation)
-        for host in &self.config.docker_hosts {
-            let status = if host.url.starts_with("unix://") {
-                // Check if socket exists
-                let socket_path = host.url.trim_start_matches("unix://");
-                if Path::new(socket_path).exists() {
-                    ConnectionStatus::Online
-                } else {
-                    ConnectionStatus::Offline
-                }
-            } else {
-                // For TCP URLs, mark as Unknown (would need async check)
-                ConnectionStatus::Unknown
-            };
-            self.docker_status.insert(host.id.clone(), status);
+        // Check SSH connections using spawn_blocking (ssh2 is synchronous)
+        let ssh_connections = self.config.ssh_connections.clone();
+        let ssh_results = check_ssh_connections(ssh_connections).await;
+        for (id, status) in ssh_results {
+            self.ssh_status.insert(id, status);
         }
 
-        // SSH and Coolify would need async network checks
-        // For now, keep them as Unknown
+        // Check Docker hosts (async)
+        let docker_hosts = self.config.docker_hosts.clone();
+        let docker_results = check_docker_connections(docker_hosts).await;
+        for (id, status) in docker_results {
+            self.docker_status.insert(id, status);
+        }
+
+        // Check Coolify instances (async)
+        let coolify_instances = self.config.coolify_instances.clone();
+        let coolify_results = check_coolify_connections(coolify_instances).await;
+        for (id, status) in coolify_results {
+            self.coolify_status.insert(id, status);
+        }
+
+        self.checking_connections = false;
     }
 
     fn count_by_status(
@@ -285,7 +297,7 @@ pub async fn run(config: Arc<Config>, db: Arc<Database>) -> anyhow::Result<()> {
 
     let mut app = App::new(config, db);
     app.load_projects().await; // Load projects from database
-    app.check_all_connections(); // Initial status check
+    app.check_all_connections().await; // Initial status check
     let res = run_app(&mut terminal, &mut app).await;
 
     // Restore terminal
@@ -977,7 +989,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                                 }
                             }
                             KeyCode::Char('r') => {
-                                app.check_all_connections();
+                                app.check_all_connections().await;
                             }
                             _ => {}
                         }
@@ -1016,7 +1028,7 @@ async fn run_app<B: ratatui::backend::Backend>(
                                 } else {
                                     app.input_mode = InputMode::Normal;
                                     app.reset_form();
-                                    app.check_all_connections();
+                                    app.check_all_connections().await;
                                 }
                             }
                             KeyCode::Backspace => {
@@ -1166,4 +1178,71 @@ async fn save_new_entry(app: &mut App) -> anyhow::Result<()> {
     app.db.save_config(config).await?;
 
     Ok(())
+}
+
+/// Check SSH connections using spawn_blocking (ssh2 is synchronous)
+async fn check_ssh_connections(connections: Vec<SshConnection>) -> Vec<(String, ConnectionStatus)> {
+    let mut results = Vec::new();
+
+    for conn in connections {
+        let conn_clone = conn.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            let mut ssh_manager = SshManager::new();
+            ssh_manager.add_connection(conn_clone.clone());
+
+            // Use test_connection with None for password (only tests TCP + handshake)
+            match ssh_manager.test_connection(&conn_clone.id, None) {
+                Ok(_) => ConnectionStatus::Online,
+                Err(_) => ConnectionStatus::Offline,
+            }
+        });
+
+        // Wait for the blocking task with a timeout
+        match tokio::time::timeout(Duration::from_secs(5), result).await {
+            Ok(Ok(status)) => results.push((conn.id.clone(), status)),
+            _ => results.push((conn.id.clone(), ConnectionStatus::Offline)),
+        }
+    }
+
+    results
+}
+
+/// Check Docker connections (async)
+async fn check_docker_connections(hosts: Vec<DockerHost>) -> Vec<(String, ConnectionStatus)> {
+    let mut results = Vec::new();
+
+    for host in hosts {
+        let mut docker_manager = DockerManager::new();
+        docker_manager.add_host(host.clone());
+
+        // Use health_check with timeout
+        let check = docker_manager.health_check(&host.id);
+        match tokio::time::timeout(Duration::from_secs(5), check).await {
+            Ok(Ok(_)) => results.push((host.id.clone(), ConnectionStatus::Online)),
+            _ => results.push((host.id.clone(), ConnectionStatus::Offline)),
+        }
+    }
+
+    results
+}
+
+/// Check Coolify connections (async)
+async fn check_coolify_connections(
+    instances: Vec<CoolifyInstance>,
+) -> Vec<(String, ConnectionStatus)> {
+    let mut results = Vec::new();
+
+    for instance in instances {
+        let mut coolify_manager = CoolifyManager::new();
+        coolify_manager.add_instance(instance.clone());
+
+        // Use health_check with timeout
+        let check = coolify_manager.health_check(&instance.id);
+        match tokio::time::timeout(Duration::from_secs(5), check).await {
+            Ok(Ok(_)) => results.push((instance.id.clone(), ConnectionStatus::Online)),
+            _ => results.push((instance.id.clone(), ConnectionStatus::Offline)),
+        }
+    }
+
+    results
 }
