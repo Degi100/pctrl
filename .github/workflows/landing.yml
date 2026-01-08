@@ -1,0 +1,41 @@
+name: Landing Page CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/landing/**'
+      - 'ROADMAP.md'
+      - '.github/workflows/landing.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/landing/**'
+      - 'ROADMAP.md'
+      - '.github/workflows/landing.yml'
+
+jobs:
+  build:
+    name: Build Landing Page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: apps/landing/package-lock.json
+
+      - name: Install dependencies
+        run: cd apps/landing && npm install
+
+      - name: Build landing page
+        run: cd apps/landing && npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-page
+          path: apps/landing/dist

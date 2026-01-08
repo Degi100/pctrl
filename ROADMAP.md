@@ -35,7 +35,8 @@
 
 ### Core Data Model
 - ✅ Project entity as central organizing unit
-- ✅ Server entity with types (vps, dedicated, local)
+- ✅ Server entity with types (vps, dedicated, local, cloud)
+- ✅ Server specs auto-detection via SSH (CPU, RAM, Disk)
 - ✅ Domain entity with types (root, subdomain, wildcard)
 - ✅ DatabaseCredentials entity with secure storage
 - ✅ Container entity for Docker tracking
@@ -57,7 +58,7 @@
 - ✅ `pctrl server` - list, add, show, remove
 - ✅ `pctrl domain` - list, add, show, remove
 - ✅ `pctrl db` - list, add, show, get, remove
-- ✅ `pctrl script` - list, add, show, remove
+- ✅ `pctrl script` - list, add, show, run, remove
 
 ### TUI Enhancements
 - ✅ Projects panel in sidebar
@@ -89,7 +90,7 @@
 
 ### CLI/TUI Improvements
 - 📋 Interactive configuration wizard
-- 📋 Colored output and progress indicators
+- ✅ Colored output and progress indicators
 - 📋 Shell completion scripts (bash, zsh, fish)
 - 📋 Configuration file validation
 
@@ -155,7 +156,7 @@
 - 📋 Android Play Store release
 
 ### Landing Page
-- 📋 Auto-sync from database
+- ✅ Auto-sync from ROADMAP.md
 - 📋 Blog/news section
 - 📋 Documentation site integration
 - 📋 Community showcase
@@ -169,9 +170,9 @@
 **Goal:** Script execution and automation features
 
 ### Script Execution
-- 📋 Run scripts via CLI/TUI/GUI
-- 📋 Script output capture
-- 📋 Exit code handling
+- ✅ Run scripts via CLI (`pctrl script run`)
+- ✅ Script output capture (stdout/stderr)
+- ✅ Exit code handling (ScriptResult)
 - 📋 Script variables and templating
 
 ### Automation
