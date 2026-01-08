@@ -4,7 +4,7 @@ use pctrl_database::Database;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-mod cli;
+mod handlers;
 mod style;
 mod tui;
 
@@ -498,7 +498,7 @@ async fn main() -> anyhow::Result<()> {
 
     // If a subcommand is provided, always use CLI mode to handle it
     if let Some(command) = cli.command {
-        cli::handle_command(command, config.clone(), db.clone()).await?;
+        handlers::handle_command(command, config.clone(), db.clone()).await?;
     } else {
         // No subcommand - use the specified mode (default: TUI)
         match mode {
