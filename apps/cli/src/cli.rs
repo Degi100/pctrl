@@ -5,8 +5,8 @@ use crate::{
 use pctrl_coolify::CoolifyManager;
 use pctrl_core::{
     AuthMethod, Config, CoolifyInstance, DatabaseCredentials, DatabaseType, DockerHost, Domain,
-    DomainType, GitRepo, Project, ProjectResource, ProjectStatus, ResourceType, Script,
-    ScriptType, Server, ServerType, SshConnection,
+    DomainType, GitRepo, Project, ProjectResource, ProjectStatus, ResourceType, Script, ScriptType,
+    Server, ServerType, SshConnection,
 };
 use pctrl_database::Database;
 use pctrl_docker::DockerManager;
@@ -64,10 +64,7 @@ async fn handle_project_command(command: ProjectCommands, db: &Database) -> anyh
                     };
                     println!(
                         "  {} {} - {}{}",
-                        status_icon,
-                        project.name,
-                        project.status,
-                        stack_str
+                        status_icon, project.name, project.status, stack_str
                     );
                 }
             }
@@ -453,7 +450,10 @@ async fn handle_database_command(command: DatabaseCommands, db: &Database) -> an
                 println!("Databases ({}):", databases.len());
                 println!();
                 for creds in databases {
-                    let host_str = creds.host.clone().unwrap_or_else(|| "localhost".to_string());
+                    let host_str = creds
+                        .host
+                        .clone()
+                        .unwrap_or_else(|| "localhost".to_string());
                     println!("  🗄️  {} [{}] - {}", creds.name, creds.db_type, host_str);
                 }
             }

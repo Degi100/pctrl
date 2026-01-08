@@ -55,7 +55,6 @@ pub enum Commands {
     // ═══════════════════════════════════════════════════════════════════════════
     // v6: PROJECT-CENTRIC COMMANDS
     // ═══════════════════════════════════════════════════════════════════════════
-
     /// Project management (v6 core)
     #[command(alias = "p")]
     Project {
@@ -91,7 +90,6 @@ pub enum Commands {
     // ═══════════════════════════════════════════════════════════════════════════
     // LEGACY COMMANDS (still supported)
     // ═══════════════════════════════════════════════════════════════════════════
-
     /// SSH connection management
     Ssh {
         #[command(subcommand)]

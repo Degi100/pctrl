@@ -707,23 +707,25 @@ impl Database {
 
         let projects = rows
             .into_iter()
-            .map(|(id, name, description, stack, status, color, icon, notes)| {
-                let stack: Vec<String> = stack
-                    .map(|s| serde_json::from_str(&s).unwrap_or_default())
-                    .unwrap_or_default();
-                let status = status.parse().unwrap_or_default();
+            .map(
+                |(id, name, description, stack, status, color, icon, notes)| {
+                    let stack: Vec<String> = stack
+                        .map(|s| serde_json::from_str(&s).unwrap_or_default())
+                        .unwrap_or_default();
+                    let status = status.parse().unwrap_or_default();
 
-                pctrl_core::Project {
-                    id,
-                    name,
-                    description,
-                    stack,
-                    status,
-                    color,
-                    icon,
-                    notes,
-                }
-            })
+                    pctrl_core::Project {
+                        id,
+                        name,
+                        description,
+                        stack,
+                        status,
+                        color,
+                        icon,
+                        notes,
+                    }
+                },
+            )
             .collect();
 
         Ok(projects)
@@ -764,7 +766,9 @@ impl Database {
 
     /// Save a server
     pub async fn save_server(&self, server: &pctrl_core::Server) -> Result<()> {
-        let specs = server.specs.as_ref()
+        let specs = server
+            .specs
+            .as_ref()
             .map(|s| serde_json::to_string(s).unwrap_or_default());
 
         sqlx::query(
@@ -796,7 +800,18 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)) = row {
+        if let Some((
+            id,
+            name,
+            host,
+            server_type,
+            provider,
+            ssh_connection_id,
+            location,
+            specs,
+            notes,
+        )) = row
+        {
             let server_type = server_type.parse().unwrap_or_default();
             let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
 
@@ -825,7 +840,18 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)) = row {
+        if let Some((
+            id,
+            name,
+            host,
+            server_type,
+            provider,
+            ssh_connection_id,
+            location,
+            specs,
+            notes,
+        )) = row
+        {
             let server_type = server_type.parse().unwrap_or_default();
             let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
 
@@ -855,11 +881,8 @@ impl Database {
 
         let servers = rows
             .into_iter()
-            .map(|(id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)| {
-                let server_type = server_type.parse().unwrap_or_default();
-                let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
-
-                pctrl_core::Server {
+            .map(
+                |(
                     id,
                     name,
                     host,
@@ -869,8 +892,23 @@ impl Database {
                     location,
                     specs,
                     notes,
-                }
-            })
+                )| {
+                    let server_type = server_type.parse().unwrap_or_default();
+                    let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
+
+                    pctrl_core::Server {
+                        id,
+                        name,
+                        host,
+                        server_type,
+                        provider,
+                        ssh_connection_id,
+                        location,
+                        specs,
+                        notes,
+                    }
+                },
+            )
             .collect();
 
         Ok(servers)
@@ -934,7 +972,19 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)) = row {
+        if let Some((
+            id,
+            domain,
+            domain_type,
+            ssl,
+            ssl_expiry,
+            cloudflare_zone_id,
+            cloudflare_record_id,
+            server_id,
+            container_id,
+            notes,
+        )) = row
+        {
             let domain_type = domain_type.parse().unwrap_or_default();
 
             Ok(Some(pctrl_core::Domain {
@@ -955,7 +1005,10 @@ impl Database {
     }
 
     /// Get a domain by domain name
-    pub async fn get_domain_by_name(&self, domain_name: &str) -> Result<Option<pctrl_core::Domain>> {
+    pub async fn get_domain_by_name(
+        &self,
+        domain_name: &str,
+    ) -> Result<Option<pctrl_core::Domain>> {
         let row: Option<(String, String, String, bool, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes FROM domains WHERE LOWER(domain) = LOWER(?)")
                 .bind(domain_name)
@@ -963,7 +1016,19 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)) = row {
+        if let Some((
+            id,
+            domain,
+            domain_type,
+            ssl,
+            ssl_expiry,
+            cloudflare_zone_id,
+            cloudflare_record_id,
+            server_id,
+            container_id,
+            notes,
+        )) = row
+        {
             let domain_type = domain_type.parse().unwrap_or_default();
 
             Ok(Some(pctrl_core::Domain {
@@ -993,10 +1058,8 @@ impl Database {
 
         let domains = rows
             .into_iter()
-            .map(|(id, domain, domain_type, ssl, ssl_expiry, cloudflare_zone_id, cloudflare_record_id, server_id, container_id, notes)| {
-                let domain_type = domain_type.parse().unwrap_or_default();
-
-                pctrl_core::Domain {
+            .map(
+                |(
                     id,
                     domain,
                     domain_type,
@@ -1007,8 +1070,23 @@ impl Database {
                     server_id,
                     container_id,
                     notes,
-                }
-            })
+                )| {
+                    let domain_type = domain_type.parse().unwrap_or_default();
+
+                    pctrl_core::Domain {
+                        id,
+                        domain,
+                        domain_type,
+                        ssl,
+                        ssl_expiry,
+                        cloudflare_zone_id,
+                        cloudflare_record_id,
+                        server_id,
+                        container_id,
+                        notes,
+                    }
+                },
+            )
             .collect();
 
         Ok(domains)
@@ -1030,7 +1108,10 @@ impl Database {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// Save database credentials
-    pub async fn save_database_credentials(&self, db_creds: &pctrl_core::DatabaseCredentials) -> Result<()> {
+    pub async fn save_database_credentials(
+        &self,
+        db_creds: &pctrl_core::DatabaseCredentials,
+    ) -> Result<()> {
         sqlx::query(
             "INSERT OR REPLACE INTO databases (id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1055,7 +1136,10 @@ impl Database {
     }
 
     /// Get database credentials by ID
-    pub async fn get_database_credentials(&self, id: &str) -> Result<Option<pctrl_core::DatabaseCredentials>> {
+    pub async fn get_database_credentials(
+        &self,
+        id: &str,
+    ) -> Result<Option<pctrl_core::DatabaseCredentials>> {
         let row: Option<(String, String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes FROM databases WHERE id = ?")
                 .bind(id)
@@ -1063,7 +1147,21 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)) = row {
+        if let Some((
+            id,
+            name,
+            db_type,
+            host,
+            port,
+            database_name,
+            username,
+            password,
+            connection_string,
+            server_id,
+            container_id,
+            notes,
+        )) = row
+        {
             let db_type = db_type.parse().unwrap_or_default();
 
             Ok(Some(pctrl_core::DatabaseCredentials {
@@ -1086,7 +1184,10 @@ impl Database {
     }
 
     /// Get database credentials by name (case-insensitive)
-    pub async fn get_database_credentials_by_name(&self, name: &str) -> Result<Option<pctrl_core::DatabaseCredentials>> {
+    pub async fn get_database_credentials_by_name(
+        &self,
+        name: &str,
+    ) -> Result<Option<pctrl_core::DatabaseCredentials>> {
         let row: Option<(String, String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes FROM databases WHERE LOWER(name) = LOWER(?)")
                 .bind(name)
@@ -1094,7 +1195,21 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)) = row {
+        if let Some((
+            id,
+            name,
+            db_type,
+            host,
+            port,
+            database_name,
+            username,
+            password,
+            connection_string,
+            server_id,
+            container_id,
+            notes,
+        )) = row
+        {
             let db_type = db_type.parse().unwrap_or_default();
 
             Ok(Some(pctrl_core::DatabaseCredentials {
@@ -1126,15 +1241,13 @@ impl Database {
 
         let databases = rows
             .into_iter()
-            .map(|(id, name, db_type, host, port, database_name, username, password, connection_string, server_id, container_id, notes)| {
-                let db_type = db_type.parse().unwrap_or_default();
-
-                pctrl_core::DatabaseCredentials {
+            .map(
+                |(
                     id,
                     name,
                     db_type,
                     host,
-                    port: port.map(|p| p as u16),
+                    port,
                     database_name,
                     username,
                     password,
@@ -1142,8 +1255,25 @@ impl Database {
                     server_id,
                     container_id,
                     notes,
-                }
-            })
+                )| {
+                    let db_type = db_type.parse().unwrap_or_default();
+
+                    pctrl_core::DatabaseCredentials {
+                        id,
+                        name,
+                        db_type,
+                        host,
+                        port: port.map(|p| p as u16),
+                        database_name,
+                        username,
+                        password,
+                        connection_string,
+                        server_id,
+                        container_id,
+                        notes,
+                    }
+                },
+            )
             .collect();
 
         Ok(databases)
@@ -1198,7 +1328,19 @@ impl Database {
                 .await
                 .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
-        if let Some((id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)) = row {
+        if let Some((
+            id,
+            name,
+            description,
+            command,
+            script_type,
+            server_id,
+            project_id,
+            dangerous,
+            last_run,
+            last_result,
+        )) = row
+        {
             let script_type = script_type.parse().unwrap_or_default();
             let last_result = last_result.and_then(|r| match r.as_str() {
                 "success" => Some(pctrl_core::ScriptResult::Success),
@@ -1233,15 +1375,8 @@ impl Database {
 
         let scripts = rows
             .into_iter()
-            .map(|(id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)| {
-                let script_type = script_type.parse().unwrap_or_default();
-                let last_result = last_result.and_then(|r| match r.as_str() {
-                    "success" => Some(pctrl_core::ScriptResult::Success),
-                    "error" => Some(pctrl_core::ScriptResult::Error),
-                    _ => None,
-                });
-
-                pctrl_core::Script {
+            .map(
+                |(
                     id,
                     name,
                     description,
@@ -1252,15 +1387,38 @@ impl Database {
                     dangerous,
                     last_run,
                     last_result,
-                }
-            })
+                )| {
+                    let script_type = script_type.parse().unwrap_or_default();
+                    let last_result = last_result.and_then(|r| match r.as_str() {
+                        "success" => Some(pctrl_core::ScriptResult::Success),
+                        "error" => Some(pctrl_core::ScriptResult::Error),
+                        _ => None,
+                    });
+
+                    pctrl_core::Script {
+                        id,
+                        name,
+                        description,
+                        command,
+                        script_type,
+                        server_id,
+                        project_id,
+                        dangerous,
+                        last_run,
+                        last_result,
+                    }
+                },
+            )
             .collect();
 
         Ok(scripts)
     }
 
     /// List scripts for a project
-    pub async fn list_scripts_for_project(&self, project_id: &str) -> Result<Vec<pctrl_core::Script>> {
+    pub async fn list_scripts_for_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<pctrl_core::Script>> {
         let rows: Vec<(String, String, Option<String>, String, String, Option<String>, Option<String>, bool, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result FROM scripts WHERE project_id = ? ORDER BY name")
                 .bind(project_id)
@@ -1270,15 +1428,8 @@ impl Database {
 
         let scripts = rows
             .into_iter()
-            .map(|(id, name, description, command, script_type, server_id, project_id, dangerous, last_run, last_result)| {
-                let script_type = script_type.parse().unwrap_or_default();
-                let last_result = last_result.and_then(|r| match r.as_str() {
-                    "success" => Some(pctrl_core::ScriptResult::Success),
-                    "error" => Some(pctrl_core::ScriptResult::Error),
-                    _ => None,
-                });
-
-                pctrl_core::Script {
+            .map(
+                |(
                     id,
                     name,
                     description,
@@ -1289,8 +1440,28 @@ impl Database {
                     dangerous,
                     last_run,
                     last_result,
-                }
-            })
+                )| {
+                    let script_type = script_type.parse().unwrap_or_default();
+                    let last_result = last_result.and_then(|r| match r.as_str() {
+                        "success" => Some(pctrl_core::ScriptResult::Success),
+                        "error" => Some(pctrl_core::ScriptResult::Error),
+                        _ => None,
+                    });
+
+                    pctrl_core::Script {
+                        id,
+                        name,
+                        description,
+                        command,
+                        script_type,
+                        server_id,
+                        project_id,
+                        dangerous,
+                        last_run,
+                        last_result,
+                    }
+                },
+            )
             .collect();
 
         Ok(scripts)
@@ -1312,7 +1483,10 @@ impl Database {
     // ═══════════════════════════════════════════════════════════════════════════
 
     /// Link a resource to a project
-    pub async fn link_project_resource(&self, resource: &pctrl_core::ProjectResource) -> Result<()> {
+    pub async fn link_project_resource(
+        &self,
+        resource: &pctrl_core::ProjectResource,
+    ) -> Result<()> {
         sqlx::query(
             "INSERT OR REPLACE INTO project_resources (id, project_id, resource_type, resource_id, role, notes)
              VALUES (?, ?, ?, ?, ?, ?)",
@@ -1331,7 +1505,10 @@ impl Database {
     }
 
     /// Get all resources for a project
-    pub async fn get_project_resources(&self, project_id: &str) -> Result<Vec<pctrl_core::ProjectResource>> {
+    pub async fn get_project_resources(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<pctrl_core::ProjectResource>> {
         let rows: Vec<(String, String, String, String, Option<String>, Option<String>)> =
             sqlx::query_as("SELECT id, project_id, resource_type, resource_id, role, notes FROM project_resources WHERE project_id = ?")
                 .bind(project_id)
@@ -1341,18 +1518,22 @@ impl Database {
 
         let resources = rows
             .into_iter()
-            .map(|(id, project_id, resource_type, resource_id, role, notes)| {
-                let resource_type = resource_type.parse().unwrap_or(pctrl_core::ResourceType::Server);
+            .map(
+                |(id, project_id, resource_type, resource_id, role, notes)| {
+                    let resource_type = resource_type
+                        .parse()
+                        .unwrap_or(pctrl_core::ResourceType::Server);
 
-                pctrl_core::ProjectResource {
-                    id,
-                    project_id,
-                    resource_type,
-                    resource_id,
-                    role,
-                    notes,
-                }
-            })
+                    pctrl_core::ProjectResource {
+                        id,
+                        project_id,
+                        resource_type,
+                        resource_id,
+                        role,
+                        notes,
+                    }
+                },
+            )
             .collect();
 
         Ok(resources)
@@ -1370,14 +1551,19 @@ impl Database {
     }
 
     /// Get projects that have a specific resource linked
-    pub async fn get_projects_for_resource(&self, resource_type: &pctrl_core::ResourceType, resource_id: &str) -> Result<Vec<String>> {
-        let rows: Vec<(String,)> =
-            sqlx::query_as("SELECT project_id FROM project_resources WHERE resource_type = ? AND resource_id = ?")
-                .bind(resource_type.to_string())
-                .bind(resource_id)
-                .fetch_all(&self.pool)
-                .await
-                .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
+    pub async fn get_projects_for_resource(
+        &self,
+        resource_type: &pctrl_core::ResourceType,
+        resource_id: &str,
+    ) -> Result<Vec<String>> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT project_id FROM project_resources WHERE resource_type = ? AND resource_id = ?",
+        )
+        .bind(resource_type.to_string())
+        .bind(resource_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| pctrl_core::Error::Database(e.to_string()))?;
 
         Ok(rows.into_iter().map(|(id,)| id).collect())
     }

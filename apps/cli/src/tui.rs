@@ -4,8 +4,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use pctrl_core::{
-    AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, Project, ProjectStatus,
-    SshConnection,
+    AuthMethod, Config, CoolifyInstance, DockerHost, GitRepo, Project, ProjectStatus, SshConnection,
 };
 use pctrl_database::Database;
 use ratatui::{
@@ -717,12 +716,18 @@ async fn run_app<B: ratatui::backend::Backend>(
                                     };
                                     Line::from(vec![
                                         Span::styled("  ● ", Style::default().fg(status_color)),
-                                        Span::styled(&project.name, Style::default().fg(Color::Cyan)),
+                                        Span::styled(
+                                            &project.name,
+                                            Style::default().fg(Color::Cyan),
+                                        ),
                                         Span::styled(
                                             format!(" ({})", project.status),
                                             Style::default().fg(status_color),
                                         ),
-                                        Span::styled(stack_str, Style::default().fg(Color::DarkGray)),
+                                        Span::styled(
+                                            stack_str,
+                                            Style::default().fg(Color::DarkGray),
+                                        ),
                                     ])
                                 })
                                 .collect()
