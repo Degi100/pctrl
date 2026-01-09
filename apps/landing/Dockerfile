@@ -18,8 +18,8 @@ ARG PUBLIC_DOCS_API_URL=http://localhost:3000
 # Set environment variable for build
 ENV PUBLIC_DOCS_API_URL=$PUBLIC_DOCS_API_URL
 
-# Build the static site (astro build directly, not turbo)
-RUN npm run build
+# Build the static site (astro directly, bypassing any monorepo config)
+RUN npx astro build
 
 # Production stage - serve static files with nginx
 FROM nginx:alpine
