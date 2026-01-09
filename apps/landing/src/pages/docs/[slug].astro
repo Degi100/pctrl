@@ -101,6 +101,7 @@ if (!doc) {
               <div class="category-label">
                 <span class="category-icon">{categoryIcons[category]}</span>
                 {categoryNames[category] || category}
+                <span class="category-count">({docs.length})</span>
               </div>
               <ul>
                 {docs.sort((a, b) => a.order - b.order).map(d => (
@@ -483,6 +484,13 @@ if (!doc) {
 
   .category-icon {
     font-size: 0.85rem;
+  }
+
+  .category-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
   }
 
   .nav-category ul {

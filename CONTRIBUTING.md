@@ -226,6 +226,73 @@ mod tests {
 }
 ```
 
+## Deployment
+
+### Deploy Script (deploy.sh)
+
+The `deploy.sh` script automates the deployment workflow for the landing page and docs-api.
+
+**Usage:**
+
+```bash
+# Interactive menu
+./deploy.sh
+
+# Direct mode
+./deploy.sh 1              # Full deploy (Git + Coolify)
+./deploy.sh 2              # Git only (commit + push)
+./deploy.sh 3              # Coolify only (redeploy)
+./deploy.sh 1 "message"    # Full deploy with custom commit message
+```
+
+**What it does:**
+
+| Option | Steps |
+|--------|-------|
+| **1 - Full Deploy** | Git add → commit → push → wait for GitHub → deploy docs-api → sync MongoDB → deploy landing |
+| **2 - Git Only** | Git add → commit → push → wait for GitHub sync |
+| **3 - Coolify Only** | Deploy docs-api → sync MongoDB → deploy landing |
+
+**Features:**
+
+- **Live Logs**: Shows build output from Coolify in real-time
+- **GitHub SHA Verification**: Waits until GitHub API confirms the push
+- **Auto Commit Messages**: Generates messages based on changed files:
+  - `ROADMAP.md` → `docs: update roadmap`
+  - `CHANGELOG.md` → `docs: update changelog`
+  - `docs-api/*` → `feat(docs-api): update api`
+  - `landing/*` → `feat(landing): update landing page`
+- **MongoDB Sync**: Triggers `/sync` endpoint after docs-api deployment
+
+**Requirements:**
+
+- VPN connection to Coolify server (10.0.0.1)
+- Valid Coolify API token
+- docs-api API key for sync endpoint
+
+**Configuration** (in script):
+
+```bash
+COOLIFY_URL="http://10.0.0.1:8000"
+COOLIFY_TOKEN="your-coolify-token"
+DOCS_API_UUID="your-docs-api-uuid"
+LANDING_UUID="your-landing-uuid"
+DOCS_API_KEY="your-api-key"
+```
+
+### Data Sync Workflow
+
+The landing page (Astro SSG) fetches data at **build time** from MongoDB via the docs-api:
+
+```
+ROADMAP.md → Git Push → docs-api syncs → MongoDB updated → Landing rebuilds
+```
+
+1. Edit `ROADMAP.md` or `CHANGELOG.md`
+2. Run `./deploy.sh 1` (or commit manually)
+3. docs-api fetches from GitHub API and updates MongoDB
+4. Landing page rebuilds with fresh data
+
 ## Security
 
 - Never commit secrets or credentials
