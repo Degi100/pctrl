@@ -28,6 +28,9 @@ src-tauri/target/
 .env.local
 .env.*.local
 
+# Deploy script (contains secrets)
+deploy.sh
+
 # IDEs
 .vscode/
 .idea/

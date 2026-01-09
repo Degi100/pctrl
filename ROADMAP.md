@@ -125,6 +125,8 @@
 
 ### Coolify Integration
 - 📋 Deployment status monitoring
+- 📋 Trigger deployments via API (`pctrl coolify deploy`)
+- 📋 Wait for deployment completion with status polling
 - 📋 Environment variable management
 - 📋 Build logs viewing
 - 📋 Service configuration updates
