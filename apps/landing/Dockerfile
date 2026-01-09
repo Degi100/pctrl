@@ -26,8 +26,7 @@ COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
-# Health check for Traefik
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -q --spider http://localhost:3000/ || exit 1
+# No Dockerfile healthcheck - let Coolify handle it
+HEALTHCHECK NONE
 
 CMD ["nginx", "-g", "daemon off;"]
