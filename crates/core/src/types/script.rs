@@ -20,6 +20,10 @@ pub struct Script {
     pub dangerous: bool,
     pub last_run: Option<String>,
     pub last_result: Option<ScriptResult>,
+    /// Exit code from last execution
+    pub exit_code: Option<i32>,
+    /// Truncated output from last execution (stdout + stderr)
+    pub last_output: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]

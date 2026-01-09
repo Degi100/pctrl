@@ -22,6 +22,13 @@ export function markdownToHtml(md: string): string {
   return parseMarkdown(md).html;
 }
 
+// Count h2 and h3 sections in markdown content
+export function countSections(md: string): number {
+  const h2Matches = md.match(/^## .+$/gm) || [];
+  const h3Matches = md.match(/^### .+$/gm) || [];
+  return h2Matches.length + h3Matches.length;
+}
+
 export function parseMarkdown(md: string): MarkdownResult {
   const headings: Heading[] = [];
 

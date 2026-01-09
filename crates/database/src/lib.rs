@@ -337,6 +337,8 @@ CREATE TABLE IF NOT EXISTS scripts (
     dangerous INTEGER DEFAULT 0,
     last_run DATETIME,
     last_result TEXT,
+    exit_code INTEGER,
+    last_output TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (server_id) REFERENCES servers(id),
     FOREIGN KEY (project_id) REFERENCES projects(id),

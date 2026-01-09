@@ -58,6 +58,8 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
                 dangerous,
                 last_run: None,
                 last_result: None,
+                exit_code: None,
+                last_output: None,
             };
 
             db.save_script(&script).await?;
@@ -115,7 +117,22 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
                 println!("  Last Run: {}", last_run);
             }
             if let Some(result) = &script.last_result {
-                println!("  Result:  {}", result);
+                let exit_info = script
+                    .exit_code
+                    .map(|c| format!(" (exit {})", c))
+                    .unwrap_or_default();
+                println!("  Result:  {}{}", result, exit_info);
+            }
+            if let Some(output) = &script.last_output {
+                if !output.is_empty() {
+                    println!("  Output:");
+                    for line in output.lines().take(10) {
+                        println!("    {}", line);
+                    }
+                    if output.lines().count() > 10 {
+                        println!("    ... ({} more lines)", output.lines().count() - 10);
+                    }
+                }
             }
             println!();
         }
@@ -138,7 +155,7 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
             println!("Command: {}", script.command);
             println!();
 
-            let result = match script.script_type {
+            let (result, exit_code, output) = match script.script_type {
                 ScriptType::Local => execute_local(&script.command),
 
                 ScriptType::Ssh => execute_ssh(&script, config, db).await?,
@@ -147,7 +164,8 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
             };
 
             // Update script result in database
-            db.update_script_result(&script.id, result).await?;
+            db.update_script_result(&script.id, result, exit_code, output.as_deref())
+                .await?;
         }
 
         ScriptCommands::Remove { name } => {
@@ -162,7 +180,10 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
     Ok(())
 }
 
-fn execute_local(command: &str) -> pctrl_core::ScriptResult {
+/// Result type for script execution: (result, exit_code, output)
+type ExecResult = (pctrl_core::ScriptResult, Option<i32>, Option<String>);
+
+fn execute_local(command: &str) -> ExecResult {
     let shell = if cfg!(windows) { "cmd" } else { "sh" };
     let args = if cfg!(windows) {
         vec!["/C", command]
@@ -182,20 +203,32 @@ fn execute_local(command: &str) -> pctrl_core::ScriptResult {
                 eprintln!("{}", stderr);
             }
 
+            let combined_output = format!("{}{}", stdout, stderr);
+            let exit_code = output.status.code();
+
             if output.status.success() {
                 println!("✓ Script completed successfully");
-                pctrl_core::ScriptResult::Success
+                (
+                    pctrl_core::ScriptResult::Success,
+                    exit_code,
+                    Some(combined_output),
+                )
             } else {
                 println!(
                     "✗ Script failed with exit code: {}",
-                    output.status.code().unwrap_or(-1)
+                    exit_code.unwrap_or(-1)
                 );
-                pctrl_core::ScriptResult::Error
+                (
+                    pctrl_core::ScriptResult::Error,
+                    exit_code,
+                    Some(combined_output),
+                )
             }
         }
         Err(e) => {
-            println!("✗ Failed to execute script: {}", e);
-            pctrl_core::ScriptResult::Error
+            let error_msg = format!("Failed to execute: {}", e);
+            println!("✗ {}", error_msg);
+            (pctrl_core::ScriptResult::Error, None, Some(error_msg))
         }
     }
 }
@@ -204,7 +237,7 @@ async fn execute_ssh(
     script: &Script,
     config: &Config,
     db: &Database,
-) -> anyhow::Result<pctrl_core::ScriptResult> {
+) -> anyhow::Result<ExecResult> {
     let server_id = script.server_id.as_ref().ok_or_else(|| {
         anyhow::anyhow!("SSH script requires a server_id. Use -s <server> when adding.")
     })?;
@@ -243,19 +276,17 @@ async fn execute_ssh(
         Ok(output) => {
             println!("{}", output);
             println!("✓ Script completed successfully");
-            Ok(pctrl_core::ScriptResult::Success)
+            Ok((pctrl_core::ScriptResult::Success, Some(0), Some(output)))
         }
         Err(e) => {
-            println!("✗ SSH execution failed: {}", e);
-            Ok(pctrl_core::ScriptResult::Error)
+            let error_msg = format!("SSH execution failed: {}", e);
+            println!("✗ {}", error_msg);
+            Ok((pctrl_core::ScriptResult::Error, None, Some(error_msg)))
         }
     }
 }
 
-async fn execute_docker(
-    script: &Script,
-    config: &Config,
-) -> anyhow::Result<pctrl_core::ScriptResult> {
+async fn execute_docker(script: &Script, config: &Config) -> anyhow::Result<ExecResult> {
     let docker_host_id = script.docker_host_id.as_ref().ok_or_else(|| {
         anyhow::anyhow!("Docker script requires docker_host_id. Use --docker-host when adding.")
     })?;
@@ -277,11 +308,12 @@ async fn execute_docker(
         Ok(output) => {
             println!("{}", output);
             println!("✓ Script completed successfully");
-            Ok(pctrl_core::ScriptResult::Success)
+            Ok((pctrl_core::ScriptResult::Success, Some(0), Some(output)))
         }
         Err(e) => {
-            println!("✗ Docker execution failed: {}", e);
-            Ok(pctrl_core::ScriptResult::Error)
+            let error_msg = format!("Docker execution failed: {}", e);
+            println!("✗ {}", error_msg);
+            Ok((pctrl_core::ScriptResult::Error, None, Some(error_msg)))
         }
     }
 }
