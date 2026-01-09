@@ -147,10 +147,11 @@ function parseRoadmapMd(content: string): Phase[] {
     }
 
     // Match feature: - ✅ Feature name (done) or - 📋 Feature name (planned)
-    const featureMatch = line.match(/^- ([✅📋]) (.+)/);
-    if (featureMatch) {
-      const done = featureMatch[1] === '✅';
-      const name = featureMatch[2].trim();
+    // Use flexible pattern because emojis have different unicode compositions
+    const featureMatch = line.match(/^- .+? (.+)/);
+    if (featureMatch && (line.includes('✅') || line.includes('📋'))) {
+      const done = line.includes('✅');
+      const name = featureMatch[1].trim();
 
       const feature: Feature = { name, done };
 
