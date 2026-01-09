@@ -12,9 +12,8 @@ COPY nginx.conf ./
 # Install dependencies
 RUN npm install
 
-# Build argument for docs API URL (needed at build time for SSG)
-ARG PUBLIC_DOCS_API_URL=http://localhost:3000
-ENV PUBLIC_DOCS_API_URL=$PUBLIC_DOCS_API_URL
+# Docs API URL for build time (SSG)
+ENV PUBLIC_DOCS_API_URL=https://pctrl-api.degidev.de
 
 # Build
 RUN ./node_modules/.bin/astro build
