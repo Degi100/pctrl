@@ -31,9 +31,31 @@ export interface Phase {
  * Parse the ROADMAP.md file and extract structured phase data
  */
 export async function parseRoadmap(): Promise<Phase[]> {
-  // Read ROADMAP.md from project root
-  const roadmapPath = path.resolve(process.cwd(), '../../ROADMAP.md');
-  const content = fs.readFileSync(roadmapPath, 'utf-8');
+  // Try to read ROADMAP.md from project root (works in monorepo dev)
+  // Falls back to empty if not found (Docker build with isolated context)
+  const possiblePaths = [
+    path.resolve(process.cwd(), '../../ROADMAP.md'),  // Monorepo: apps/landing -> root
+    path.resolve(process.cwd(), 'ROADMAP.md'),        // If copied to landing
+    '/ROADMAP.md',                                     // Absolute fallback
+  ];
+
+  let content = '';
+  for (const p of possiblePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        content = fs.readFileSync(p, 'utf-8');
+        break;
+      }
+    } catch {
+      // Continue to next path
+    }
+  }
+
+  // Return empty array if no ROADMAP.md found
+  if (!content) {
+    console.warn('ROADMAP.md not found, using fallback data');
+    return getFallbackPhases();
+  }
 
   const phases: Phase[] = [];
   const lines = content.split('\n');
@@ -174,6 +196,38 @@ function getVersionForPhase(phaseId: number): string {
     9: 'v1.0.0',
   };
   return versions[phaseId] || `v0.${phaseId}.x`;
+}
+
+/**
+ * Fallback phases when ROADMAP.md is not available
+ */
+function getFallbackPhases(): Phase[] {
+  return [
+    {
+      id: 1,
+      version: 'v0.1.x',
+      title: 'Foundation',
+      status: 'done',
+      statusLabel: 'Complete',
+      description: 'Core CLI with database and basic commands',
+    },
+    {
+      id: 2,
+      version: 'v0.2.x',
+      title: 'Expansion',
+      status: 'current',
+      statusLabel: 'Current',
+      description: 'Extended functionality and integrations',
+    },
+    {
+      id: 3,
+      version: 'v0.3.x',
+      title: 'Automation',
+      status: 'planned',
+      statusLabel: 'Planned',
+      description: 'Scripts, scheduling, and workflows',
+    },
+  ];
 }
 
 /**
