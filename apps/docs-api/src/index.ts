@@ -30,6 +30,21 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
 
+// Manual sync endpoint - trigger re-sync from GitHub
+app.post('/sync', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  const apiKey = process.env.API_KEY;
+
+  // Require API key for sync
+  if (apiKey && authHeader !== `Bearer ${apiKey}`) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  console.log('[API] Manual sync triggered');
+  await syncFromGitHub();
+  return c.json({ status: 'ok', message: 'Sync completed' });
+});
+
 // Routes
 app.route('/docs', docs);
 app.route('/roadmap', roadmap);
