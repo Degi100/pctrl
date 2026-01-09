@@ -1,6 +1,6 @@
 // Sync from GitHub - runs at startup to seed database from GitHub raw files
 
-import { getDb } from './db';
+import { getDB } from './db';
 
 const GITHUB_RAW = 'https://raw.githubusercontent.com/Degi100/pctrl/main';
 
@@ -151,7 +151,7 @@ function parseChangelog(content: string): ChangelogEntry[] {
 
 export async function syncFromGitHub(): Promise<void> {
   console.log('[Sync] Starting GitHub sync...');
-  const db = getDb();
+  const db = await getDB();
 
   try {
     // Roadmap
