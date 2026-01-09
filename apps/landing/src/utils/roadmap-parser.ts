@@ -34,8 +34,8 @@ export async function parseRoadmap(): Promise<Phase[]> {
   // Try to read ROADMAP.md from project root (works in monorepo dev)
   // Falls back to empty if not found (Docker build with isolated context)
   const possiblePaths = [
-    path.resolve(process.cwd(), '../../ROADMAP.md'),  // Monorepo: apps/landing -> root
-    path.resolve(process.cwd(), 'ROADMAP.md'),        // If copied to landing
+    path.resolve(process.cwd(), 'ROADMAP.md'),        // Docker build: copied to /app
+    path.resolve(process.cwd(), '../../ROADMAP.md'),  // Monorepo dev: apps/landing -> root
     '/ROADMAP.md',                                     // Absolute fallback
   ];
 

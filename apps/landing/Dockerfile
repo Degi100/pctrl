@@ -3,11 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy only files that exist in apps/landing
-COPY package.json ./
-COPY src ./src
-COPY astro.config.mjs ./
-COPY nginx.conf ./
+# Copy landing page files from apps/landing (Base Directory: /)
+COPY apps/landing/package.json ./
+COPY apps/landing/src ./src
+COPY apps/landing/astro.config.mjs ./
+COPY apps/landing/nginx.conf ./
+
+# Copy ROADMAP.md from root for live stats
+COPY ROADMAP.md ./ROADMAP.md
 
 # Install dependencies
 RUN npm install
@@ -25,9 +28,5 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
-
-# Healthcheck disabled - let Coolify/Traefik handle routing
-# HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#   CMD wget -q --spider http://localhost:80/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
