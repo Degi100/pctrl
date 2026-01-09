@@ -23,7 +23,8 @@ export function markdownToHtml(md: string): string {
 }
 
 // Count h2 and h3 sections in markdown content
-export function countSections(md: string): number {
+export function countSections(md: string | undefined | null): number {
+  if (!md) return 0;
   const h2Matches = md.match(/^## .+$/gm) || [];
   const h3Matches = md.match(/^### .+$/gm) || [];
   return h2Matches.length + h3Matches.length;
