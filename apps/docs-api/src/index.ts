@@ -3,13 +3,14 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { connectDB } from './db';
 import docs from './routes/docs';
+import roadmap from './routes/roadmap';
 
 const app = new Hono();
 
 // Middleware
 app.use('*', logger());
 app.use('*', cors({
-  origin: ['http://localhost:4321', 'https://pctrl.dev', 'https://www.pctrl.dev'],
+  origin: ['http://localhost:4321', 'https://pctrl.dev', 'https://www.pctrl.dev', 'https://pctrl.degidev.de'],
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -29,6 +30,7 @@ app.get('/health', (c) => {
 
 // Routes
 app.route('/docs', docs);
+app.route('/roadmap', roadmap);
 
 // 404 handler
 app.notFound((c) => {

@@ -3,14 +3,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy landing page files from apps/landing (Base Directory: /)
-COPY apps/landing/package.json ./
-COPY apps/landing/src ./src
-COPY apps/landing/astro.config.mjs ./
-COPY apps/landing/nginx.conf ./
-
-# Copy ROADMAP.md from root for live stats
-COPY ROADMAP.md ./ROADMAP.md
+# Copy only files that exist in apps/landing
+COPY package.json ./
+COPY src ./src
+COPY astro.config.mjs ./
+COPY nginx.conf ./
 
 # Install dependencies
 RUN npm install
