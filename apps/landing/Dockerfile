@@ -3,30 +3,28 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files and install
+# Copy only the landing app (assuming build context is apps/landing)
 COPY package.json ./
-RUN npm install --legacy-peer-deps
+COPY src ./src
+COPY public ./public
+COPY astro.config.mjs ./
+COPY tsconfig.json ./
+COPY nginx.conf ./
 
-# Copy source code (must include src/, public/, astro.config.mjs etc.)
-COPY . .
-
-# Verify the files are there
-RUN ls -la && ls -la src/ || echo "src not found"
+# Install dependencies
+RUN npm install
 
 # Build argument for docs API URL (needed at build time for SSG)
 ARG PUBLIC_DOCS_API_URL=http://localhost:3000
 ENV PUBLIC_DOCS_API_URL=$PUBLIC_DOCS_API_URL
 
-# Build with the installed astro from node_modules
+# Build
 RUN ./node_modules/.bin/astro build
 
-# Production stage - serve static files with nginx
+# Production stage
 FROM nginx:alpine
 
-# Copy built static files
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx config for SPA routing
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
