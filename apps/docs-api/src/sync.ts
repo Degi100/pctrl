@@ -2,7 +2,16 @@
 
 import { getDB } from './db';
 
-const GITHUB_RAW = 'https://raw.githubusercontent.com/Degi100/pctrl/main';
+// GitHub API (no cache) instead of raw URLs (cached)
+const GITHUB_API = 'https://api.github.com/repos/Degi100/pctrl/contents';
+
+async function fetchGitHubFile(path: string): Promise<string | null> {
+  const res = await fetch(`${GITHUB_API}/${path}`, {
+    headers: { 'Accept': 'application/vnd.github.v3.raw' }
+  });
+  if (!res.ok) return null;
+  return res.text();
+}
 
 interface Feature { name: string; done: boolean; }
 interface Category { name: string; features: Feature[]; }
@@ -155,9 +164,9 @@ export async function syncFromGitHub(): Promise<void> {
 
   try {
     // Roadmap
-    const roadmapRes = await fetch(`${GITHUB_RAW}/ROADMAP.md`);
-    if (roadmapRes.ok) {
-      const phases = parseRoadmap(await roadmapRes.text());
+    const roadmapContent = await fetchGitHubFile('ROADMAP.md');
+    if (roadmapContent) {
+      const phases = parseRoadmap(roadmapContent);
       console.log(`[Sync] Parsed ${phases.length} phases from ROADMAP.md`);
       for (const phase of phases) {
         await db.collection('roadmap').updateOne(
@@ -169,9 +178,9 @@ export async function syncFromGitHub(): Promise<void> {
     }
 
     // Changelog
-    const changelogRes = await fetch(`${GITHUB_RAW}/CHANGELOG.md`);
-    if (changelogRes.ok) {
-      const entries = parseChangelog(await changelogRes.text());
+    const changelogContent = await fetchGitHubFile('CHANGELOG.md');
+    if (changelogContent) {
+      const entries = parseChangelog(changelogContent);
       console.log(`[Sync] Parsed ${entries.length} changelog entries`);
       for (const entry of entries) {
         await db.collection('changelog').updateOne(
@@ -191,9 +200,8 @@ export async function syncFromGitHub(): Promise<void> {
     ];
 
     for (const cfg of docConfigs) {
-      const res = await fetch(`${GITHUB_RAW}/${cfg.file}`);
-      if (res.ok) {
-        const content = await res.text();
+      const content = await fetchGitHubFile(cfg.file);
+      if (content) {
         const titleMatch = content.match(/^#\s+(.+)/m);
         await db.collection('docs').updateOne(
           { slug: cfg.slug },
