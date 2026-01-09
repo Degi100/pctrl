@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { connectDB } from './db';
+import { syncFromGitHub } from './sync';
 import docs from './routes/docs';
 import roadmap from './routes/roadmap';
 import changelog from './routes/changelog';
@@ -48,8 +49,10 @@ app.onError((err, c) => {
 // Start server
 const port = parseInt(process.env.PORT || '3000');
 
-// Connect to database on startup
-connectDB().then(() => {
+// Connect to database and sync from GitHub on startup
+connectDB().then(async () => {
+  // Sync from GitHub on every startup (ensures fresh data)
+  await syncFromGitHub();
   console.log(`Server running on port ${port}`);
 }).catch((err) => {
   console.error('Failed to connect to database:', err);

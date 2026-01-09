@@ -75,12 +75,12 @@
 **Goal:** Automatic detection and mapping of resources
 
 ### Discovery Features
-- ✅ DNS lookup for domain verification
-- ✅ Port scanning for service detection
-- ✅ Docker container inspection
-- ✅ Environment variable extraction
-- ✅ Coolify project synchronization
-- ✅ Git remote linking
+- 📋 DNS lookup for domain verification
+- 📋 Port scanning for service detection
+- 📋 Docker container inspection
+- 📋 Environment variable extraction
+- 📋 Coolify project synchronization
+- 📋 Git remote linking
 
 ### Discovery Workflow
 - 📋 `pctrl discover` command
