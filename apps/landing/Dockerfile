@@ -26,7 +26,4 @@ COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
-# No Dockerfile healthcheck - let Coolify handle it
-HEALTHCHECK NONE
-
 CMD ["nginx", "-g", "daemon off;"]
