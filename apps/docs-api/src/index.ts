@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { connectDB } from './db';
 import docs from './routes/docs';
 import roadmap from './routes/roadmap';
+import changelog from './routes/changelog';
 
 const app = new Hono();
 
@@ -31,6 +32,7 @@ app.get('/health', (c) => {
 // Routes
 app.route('/docs', docs);
 app.route('/roadmap', roadmap);
+app.route('/changelog', changelog);
 
 // 404 handler
 app.notFound((c) => {
