@@ -1,6 +1,13 @@
 // Seed script to populate documentation
-const API_URL = 'http://localhost:3000';
-const API_KEY = process.env.API_KEY || 'pctrl-docs-api-2026-secure-key';
+// Uses environment variables from .env file (Bun loads automatically)
+const API_URL = process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`;
+const API_KEY = process.env.API_KEY;
+
+if (!API_KEY) {
+  console.error('Error: API_KEY environment variable is required');
+  console.error('Set it in .env or run: API_KEY=your-key bun run seed');
+  process.exit(1);
+}
 
 interface Doc {
   slug: string;
@@ -22,6 +29,8 @@ const docs: Doc[] = [
 
 - **Rust** 1.70 or higher ([install](https://rustup.rs/))
 - **Node.js** 18 or higher (for desktop/mobile apps)
+
+> **Tip:** On Windows, use rustup-init.exe from the official website for the easiest installation.
 
 ## From Source
 
@@ -53,6 +62,8 @@ pctrl --db /custom/path/pctrl.db ssh list
 \`\`\`
 
 ### Reset Database
+
+> **Warning:** This will delete all your saved connections and configurations permanently!
 
 \`\`\`bash
 # Linux/macOS
@@ -521,33 +532,60 @@ pctrl project remove my-app
   }
 ];
 
+async function upsertDoc(doc: Doc): Promise<'created' | 'updated' | 'error'> {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_KEY}`
+  };
+
+  // Check if doc exists
+  const checkResponse = await fetch(`${API_URL}/docs/${doc.slug}`);
+
+  if (checkResponse.ok) {
+    // Doc exists - update it
+    const updateResponse = await fetch(`${API_URL}/docs/${doc.slug}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(doc)
+    });
+    return updateResponse.ok ? 'updated' : 'error';
+  } else {
+    // Doc doesn't exist - create it
+    const createResponse = await fetch(`${API_URL}/docs`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(doc)
+    });
+    return createResponse.ok ? 'created' : 'error';
+  }
+}
+
 async function seedDocs() {
-  console.log('Seeding documentation...\n');
+  console.log('Seeding documentation (upsert mode)...\n');
+
+  let created = 0, updated = 0, errors = 0;
 
   for (const doc of docs) {
     try {
-      const response = await fetch(`${API_URL}/docs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify(doc)
-      });
+      const result = await upsertDoc(doc);
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`✓ Created: ${doc.title} (${doc.slug})`);
+      if (result === 'created') {
+        console.log(`+ Created: ${doc.title} (${doc.slug})`);
+        created++;
+      } else if (result === 'updated') {
+        console.log(`~ Updated: ${doc.title} (${doc.slug})`);
+        updated++;
       } else {
-        const error = await response.text();
-        console.log(`✗ Failed: ${doc.title} - ${error}`);
+        console.log(`✗ Error: ${doc.title}`);
+        errors++;
       }
     } catch (err) {
       console.log(`✗ Error: ${doc.title} - ${err}`);
+      errors++;
     }
   }
 
-  console.log('\nDone! Checking results...\n');
+  console.log(`\nDone! Created: ${created}, Updated: ${updated}, Errors: ${errors}\n`);
 
   const listResponse = await fetch(`${API_URL}/docs`);
   const { docs: allDocs } = await listResponse.json();

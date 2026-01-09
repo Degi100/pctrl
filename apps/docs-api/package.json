@@ -7,7 +7,9 @@
     "dev": "bun run --hot src/index.ts",
     "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
-    "seed": "bun run seed-docs.ts"
+    "seed": "bun run seed-docs.ts",
+    "clean": "bun run clean-docs.ts",
+    "reseed": "bun run clean-docs.ts && bun run seed-docs.ts"
   },
   "dependencies": {
     "hono": "^4.6.0",
