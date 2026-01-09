@@ -3,12 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy only the landing app (assuming build context is apps/landing)
+# Copy only files that exist in apps/landing
 COPY package.json ./
 COPY src ./src
-COPY public ./public
 COPY astro.config.mjs ./
-COPY tsconfig.json ./
 COPY nginx.conf ./
 
 # Install dependencies
