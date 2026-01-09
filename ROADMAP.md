@@ -83,10 +83,10 @@
 - ✅ Git remote linking
 
 ### Discovery Workflow
-- 📋 `pctrl discover` command
-- 📋 Suggestion review interface
-- 📋 Auto-link confirmed resources
-- 📋 Discovery cache management
+- ✅ `pctrl discover` command
+- ✅ Suggestion review interface
+- ✅ Auto-link confirmed resources
+- ✅ Discovery cache management
 
 ### CLI/TUI Improvements
 - 📋 Interactive configuration wizard
