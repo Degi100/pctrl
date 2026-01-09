@@ -3,11 +3,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# Copy only landing app files (not the whole monorepo)
+COPY package.json ./
 
 # Install dependencies
-RUN npm ci || npm install
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -18,7 +18,7 @@ ARG PUBLIC_DOCS_API_URL=http://localhost:3000
 # Set environment variable for build
 ENV PUBLIC_DOCS_API_URL=$PUBLIC_DOCS_API_URL
 
-# Build the static site
+# Build the static site (astro build directly, not turbo)
 RUN npm run build
 
 # Production stage - serve static files with nginx
@@ -27,7 +27,7 @@ FROM nginx:alpine
 # Copy built static files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx config for SPA routing (from builder to avoid cache issues)
+# Copy nginx config for SPA routing
 COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port
