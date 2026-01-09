@@ -1,7 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { fetchDocs, fetchDoc, categoryNames, groupByCategory } from '../../utils/docs-api';
-import { parseMarkdown, countSections } from '../../utils/markdown';
+import { parseMarkdown } from '../../utils/markdown';
 
 // Generate all doc pages at build time
 export async function getStaticPaths() {
@@ -26,10 +26,10 @@ const categoryIcons: Record<string, string> = {
   'guides': '📖'
 };
 
-// Calculate total sections (h2/h3) per category
+// Calculate total sections (h2/h3) per category from API response
 const categorySectionCounts: Record<string, number> = {};
 for (const [category, docs] of Object.entries(groupedDocs)) {
-  categorySectionCounts[category] = docs.reduce((total, d) => total + countSections(d.content), 0);
+  categorySectionCounts[category] = docs.reduce((total, d) => total + (d.sectionCount || 0), 0);
 }
 
 // Find next and previous docs

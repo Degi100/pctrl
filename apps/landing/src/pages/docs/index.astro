@@ -1,17 +1,16 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { fetchDocs, groupByCategory, categoryNames } from '../../utils/docs-api';
-import { countSections } from '../../utils/markdown';
 
 // Fetch docs at build time
 const docs = await fetchDocs();
 const grouped = groupByCategory(docs);
 const categoryOrder = ['getting-started', 'commands', 'guides'];
 
-// Calculate total sections (h2/h3) per category
+// Calculate total sections (h2/h3) per category from API response
 const categorySectionCounts: Record<string, number> = {};
 for (const [category, catDocs] of Object.entries(grouped)) {
-  categorySectionCounts[category] = catDocs.reduce((total, d) => total + countSections(d.content), 0);
+  categorySectionCounts[category] = catDocs.reduce((total, d) => total + (d.sectionCount || 0), 0);
 }
 
 // Category metadata

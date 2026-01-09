@@ -3,6 +3,14 @@ import { getDB } from '../db';
 
 const docs = new Hono();
 
+// Count h2 and h3 sections in markdown content
+function countSections(content: string | null | undefined): number {
+  if (!content) return 0;
+  const h2Matches = content.match(/^## .+$/gm) || [];
+  const h3Matches = content.match(/^### .+$/gm) || [];
+  return h2Matches.length + h3Matches.length;
+}
+
 // Doc schema:
 // {
 //   _id: ObjectId,
@@ -16,16 +24,26 @@ const docs = new Hono();
 //   updatedAt: Date
 // }
 
-// GET /docs - List all docs (titles only)
+// GET /docs - List all docs (titles only, with section counts)
 docs.get('/', async (c) => {
   const db = await getDB();
   const documents = await db
     .collection('docs')
-    .find({}, { projection: { slug: 1, category: 1, title: 1, order: 1 } })
+    .find({}, { projection: { slug: 1, category: 1, title: 1, order: 1, content: 1 } })
     .sort({ category: 1, order: 1 })
     .toArray();
 
-  return c.json({ docs: documents });
+  // Calculate section counts and remove content from response
+  const docsWithCounts = documents.map((doc) => ({
+    _id: doc._id,
+    slug: doc.slug,
+    category: doc.category,
+    title: doc.title,
+    order: doc.order,
+    sectionCount: countSections(doc.content),
+  }));
+
+  return c.json({ docs: docsWithCounts });
 });
 
 // GET /docs/categories - List all categories
@@ -44,11 +62,21 @@ docs.get('/category/:category', async (c) => {
   const db = await getDB();
   const documents = await db
     .collection('docs')
-    .find({ category }, { projection: { slug: 1, title: 1, order: 1 } })
+    .find({ category }, { projection: { slug: 1, category: 1, title: 1, order: 1, content: 1 } })
     .sort({ order: 1 })
     .toArray();
 
-  return c.json({ docs: documents });
+  // Calculate section counts and remove content from response
+  const docsWithCounts = documents.map((doc) => ({
+    _id: doc._id,
+    slug: doc.slug,
+    category: doc.category,
+    title: doc.title,
+    order: doc.order,
+    sectionCount: countSections(doc.content),
+  }));
+
+  return c.json({ docs: docsWithCounts });
 });
 
 // GET /docs/:slug - Get a single doc by slug

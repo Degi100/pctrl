@@ -20,6 +20,7 @@ export interface DocsListItem {
   title: string;
   category: string;
   order: number;
+  sectionCount: number;
 }
 
 export async function fetchDocs(): Promise<DocsListItem[]> {
