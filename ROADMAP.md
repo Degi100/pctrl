@@ -70,7 +70,7 @@
 
 ---
 
-## Phase 2.5: Legacy Migration 🚧 [current]
+## Phase 2.5: Legacy Migration ✅ [done]
 
 **Goal:** Migrate from standalone commands to project-centric architecture
 
@@ -79,25 +79,27 @@
 - ✅ Create `pctrl migrate` command for automatic data migration
 - ✅ Update TUI to use v6 entities (Projects, Servers, Domains, etc.)
 - ✅ Update Tauri desktop with v6 commands
-- 📋 Remove legacy code paths
+- ✅ Remove legacy code paths
 
-### Legacy → v6 Mapping
+### Legacy Removed
 
-| Legacy | v6 | Status |
-|--------|-----|--------|
-| `pctrl ssh` | Integrated into `pctrl server --ssh` | 📋 Planned |
-| `pctrl docker` | `pctrl server` + containers | 📋 Planned |
-| `pctrl coolify` | Project deployment layer | 📋 Planned |
-| `pctrl git` | `pctrl project` git linking | 📋 Planned |
+| Removed | Replacement |
+|---------|-------------|
+| `pctrl ssh` | `pctrl server` (with SSH reference field) |
+| `pctrl docker` | `pctrl server` + project resources |
+| `pctrl coolify` | Project deployment layer (Phase 4) |
+| `pctrl git` | Project git linking (Phase 4) |
+| `pctrl migrate` | No longer needed |
 
-### Breaking Changes
-- Legacy commands will be removed in v0.4.0
-- Database schema migration required
-- CLI arguments may change
+### Database Cleanup
+- ✅ Dropped `ssh_connections` table
+- ✅ Dropped `docker_hosts` table
+- ✅ Dropped `coolify_instances` table
+- ✅ Dropped `git_repos` table
 
 ---
 
-## Phase 3: Auto-Discovery 📋 [planned]
+## Phase 3: Auto-Discovery 🚧 [next]
 
 **Goal:** Automatic detection and mapping of resources
 
@@ -341,10 +343,10 @@ To suggest new features or changes to the roadmap:
 
 - **v0.1.x** - Foundation (completed)
 - **v0.2.0** - Project Registry (completed)
-- **v0.2.5** - Legacy Migration (Q1 2026) ← current
-- **v0.3.0** - Auto-Discovery (Q2 2026)
-- **v0.4.0** - Infrastructure View (Q3 2026)
-- **v0.5.0** - Desktop & Mobile (Q4 2026)
-- **v1.0.0** - Enterprise (2027)
+- **v0.2.5** - Legacy Migration (completed)
+- **v0.3.0** - Auto-Discovery (Q1 2026) ← next
+- **v0.4.0** - Infrastructure View (Q2 2026)
+- **v0.5.0** - Desktop & Mobile (Q3 2026)
+- **v1.0.0** - Enterprise (2026/2027)
 
 *Note: This roadmap is subject to change based on community feedback and priorities.*

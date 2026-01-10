@@ -5,7 +5,7 @@ Get up and running with pctrl in minutes!
 ## Prerequisites
 
 - **Rust** 1.70 or higher ([install](https://rustup.rs/))
-- **Node.js** 18 or higher (for desktop/mobile apps)
+- **Node.js** 18 or higher (for desktop app)
 
 ## Installation
 
@@ -22,41 +22,42 @@ pctrl --version
 ## First Run
 
 ```bash
-# Show the status dashboard
+# Launch TUI (default)
 pctrl
 
 # Show all available commands
 pctrl --help
 ```
 
-You'll see the styled pctrl banner with your current configuration status.
+## Three Interfaces
 
-## Three Modes
-
-### CLI Mode (Default)
-
-Fast, scriptable command-line interface:
-
-```bash
-pctrl ssh list
-pctrl docker hosts
-pctrl --help
-```
-
-### TUI Mode (Terminal Dashboard)
+### TUI Mode (Default)
 
 Beautiful terminal UI with keyboard navigation:
 
 ```bash
-pctrl -m tui
+pctrl
 
 # Navigation:
-# ↑/↓ or j/k  - Move between items
-# Enter       - Select (coming soon)
+# ↑/↓ or j/k  - Move between panels
+# a           - Add new item
+# Tab         - Next form field
+# Enter       - Save
+# r           - Reload data
 # q or Esc    - Quit
 ```
 
-### GUI Mode (Desktop App)
+### CLI Mode
+
+Fast, scriptable command-line interface:
+
+```bash
+pctrl project list
+pctrl server list
+pctrl --help
+```
+
+### Desktop App (GUI)
 
 Native desktop application:
 
@@ -66,72 +67,106 @@ npm install
 npm run tauri dev
 ```
 
-## Adding Your First Resources
+## Adding Resources
 
-### SSH Connection
+### Projects
+
+Projects are the central organizing unit:
 
 ```bash
-# Add a server
-pctrl ssh add "Production" 10.0.0.1 -u root -p 22
+# Add a project
+pctrl project add "My App" -d "My awesome app" -s "rust,react"
 
-# With custom key
-pctrl ssh add "Staging" 10.0.0.2 -u deploy -k ~/.ssh/staging_key
+# With status
+pctrl project add "API" --status live
 
-# List connections
-pctrl ssh list
+# List projects
+pctrl project list
 
-# Test connection
-pctrl ssh exec production "hostname"
+# Show details
+pctrl project show my-app
 ```
 
-### Docker Host
+### Servers
 
 ```bash
-# Add local Docker
-pctrl docker add "Local"
+# Add a VPS
+pctrl server add "Production" 10.0.0.1 -t vps -p hetzner
 
-# Add remote Docker host
-pctrl docker add "Remote Server" -u tcp://10.0.0.1:2375
+# Add a local server
+pctrl server add "Dev Machine" localhost -t local
 
-# List hosts
-pctrl docker hosts
+# List servers
+pctrl server list
 
-# List containers
-pctrl docker list local
+# Show details
+pctrl server show production
 ```
 
-### Coolify Instance
+### Domains
 
 ```bash
-# Add Coolify instance
-pctrl coolify add "Production" -u https://coolify.example.com -t your-api-token
+# Add a domain
+pctrl domain add app.example.com
 
-# List instances
-pctrl coolify instances
+# With type and SSL info
+pctrl domain add staging.example.com -t staging --ssl
 
-# List deployments
-pctrl coolify list production
+# List domains
+pctrl domain list
 ```
 
-### Git Repository
+### Database Credentials
 
 ```bash
-# Add a repository
-pctrl git add "My Project" -p /path/to/repo
+# Add PostgreSQL credentials
+pctrl db add "Production DB" -t postgres -H localhost -p 5432 -u myuser
 
-# List repos
-pctrl git repos
+# Add MongoDB
+pctrl db add "Analytics" -t mongodb -H mongo.example.com
 
-# List releases/tags
-pctrl git list my-project
+# List databases
+pctrl db list
 
-# Create a release
-pctrl git create my-project v1.0.0 "First release"
+# Get specific field
+pctrl db get production-db pass
+```
+
+### Scripts
+
+```bash
+# Add a local script
+pctrl script add "Build" -c "cargo build --release"
+
+# Add with description
+pctrl script add "Deploy" -c "./deploy.sh" -d "Deploy to production"
+
+# List scripts
+pctrl script list
+
+# Run a script
+pctrl script run build
+```
+
+## Linking Resources to Projects
+
+```bash
+# Link a server to a project
+pctrl project link my-app server production -r "production server"
+
+# Link a domain
+pctrl project link my-app domain app.example.com
+
+# Link a database
+pctrl project link my-app database production-db -r "main database"
+
+# Show project with resources
+pctrl project show my-app
 ```
 
 ## Database
 
-Your data is stored in an encrypted SQLite database:
+Your data is stored in an SQLite database:
 
 | Platform | Location |
 |----------|----------|
@@ -141,7 +176,7 @@ Your data is stored in an encrypted SQLite database:
 ### Custom Database Path
 
 ```bash
-pctrl --db /custom/path/pctrl.db ssh list
+pctrl --db /custom/path/pctrl.db project list
 ```
 
 ### Reset Database
@@ -156,46 +191,53 @@ del %LOCALAPPDATA%\pctrl\pctrl.db
 
 ## Command Reference
 
-### SSH Commands
+### Project Commands
 
 ```bash
-pctrl ssh list                    # List all connections
-pctrl ssh add <name> <host> -u <user> [-p <port>] [-k <key>]
-pctrl ssh remove <id>             # Remove a connection
-pctrl ssh connect <id>            # Connect to host
-pctrl ssh exec <id> "<command>"   # Execute command
+pctrl project list                  # List all projects
+pctrl project add <name> [-d desc] [-s stack] [--status dev|staging|live|archived]
+pctrl project show <name>           # Show project details
+pctrl project remove <name>         # Remove a project
+pctrl project link <project> <type> <id> [-r role]  # Link resource
+pctrl project unlink <project> <link-id>            # Unlink resource
 ```
 
-### Docker Commands
+### Server Commands
 
 ```bash
-pctrl docker hosts                # List configured hosts
-pctrl docker add <name> [-u <url>]
-pctrl docker remove <id>          # Remove a host
-pctrl docker list <host-id>       # List containers
-pctrl docker start <host-id> <container-id>
-pctrl docker stop <host-id> <container-id>
+pctrl server list                   # List all servers
+pctrl server add <name> <host> [-t vps|dedicated|local|cloud] [-p provider]
+pctrl server show <name>            # Show server details
+pctrl server remove <name>          # Remove a server
 ```
 
-### Coolify Commands
+### Domain Commands
 
 ```bash
-pctrl coolify instances           # List instances
-pctrl coolify add <name> -u <url> -t <token>
-pctrl coolify remove <id>         # Remove instance
-pctrl coolify list <instance-id>  # List deployments
-pctrl coolify deploy <instance-id> <project-id>
+pctrl domain list                   # List all domains
+pctrl domain add <domain> [-t production|staging|dev] [--ssl]
+pctrl domain show <domain>          # Show domain details
+pctrl domain remove <domain>        # Remove a domain
 ```
 
-### Git Commands
+### Database Commands
 
 ```bash
-pctrl git repos                   # List repositories
-pctrl git add <name> -p <path>
-pctrl git remove <id>             # Remove repository
-pctrl git list <repo-id>          # List releases/tags
-pctrl git create <repo-id> <tag> <message>
-pctrl git push <repo-id>          # Push tags to remote
+pctrl db list                       # List all database credentials
+pctrl db add <name> -t <type> [-H host] [-p port] [-u user]
+pctrl db show <name>                # Show credentials
+pctrl db get <name> <field>         # Get specific field (user, pass, url)
+pctrl db remove <name>              # Remove credentials
+```
+
+### Script Commands
+
+```bash
+pctrl script list                   # List all scripts
+pctrl script add <name> -c <command> [-d desc] [-t local|ssh|docker]
+pctrl script show <name>            # Show script details
+pctrl script run <name> [--force]   # Run a script
+pctrl script remove <name>          # Remove a script
 ```
 
 ## Troubleshooting
@@ -209,24 +251,9 @@ Add Cargo bin to your PATH:
 export PATH="$PATH:$HOME/.cargo/bin"
 ```
 
-### SSH Connection Errors
+### TUI Not Working
 
-1. Check your SSH key is loaded:
-   ```bash
-   ssh-add -l
-   ssh-add ~/.ssh/id_rsa
-   ```
-
-2. Verify the connection works with standard SSH:
-   ```bash
-   ssh user@host
-   ```
-
-### Docker Connection Errors
-
-1. Check Docker is running
-2. For remote hosts, ensure the Docker API is exposed
-3. Verify the URL format: `unix:///var/run/docker.sock` or `tcp://host:2375`
+The TUI works best in Windows Terminal or CMD. Git Bash may have issues with keyboard input.
 
 ### Database Locked
 
@@ -239,7 +266,7 @@ If you see "database locked" errors, ensure only one pctrl instance is running.
 cargo build -p pctrl-cli
 
 # Run directly
-cargo run -p pctrl-cli -- ssh list
+cargo run -p pctrl-cli -- project list
 
 # Run tests
 cargo test

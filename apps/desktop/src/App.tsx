@@ -45,14 +45,6 @@ interface Script {
   description: string | null;
 }
 
-interface LegacyCounts {
-  ssh: number;
-  docker: number;
-  coolify: number;
-  git: number;
-  total: number;
-}
-
 interface Tab {
   id: string;
   label: string;
@@ -74,7 +66,6 @@ function App() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [databases, setDatabases] = useState<DatabaseCredentials[]>([]);
   const [scripts, setScripts] = useState<Script[]>([]);
-  const [legacyCounts, setLegacyCounts] = useState<LegacyCounts | null>(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -98,14 +89,13 @@ function App() {
       setLoading(true);
       setError(null);
 
-      const [projectsData, serversData, domainsData, databasesData, scriptsData, legacy] =
+      const [projectsData, serversData, domainsData, databasesData, scriptsData] =
         await Promise.all([
           invoke<Project[]>('list_projects'),
           invoke<Server[]>('list_servers'),
           invoke<Domain[]>('list_domains'),
           invoke<DatabaseCredentials[]>('list_databases'),
           invoke<Script[]>('list_scripts'),
-          invoke<LegacyCounts>('get_legacy_counts'),
         ]);
 
       setProjects(projectsData);
@@ -113,7 +103,6 @@ function App() {
       setDomains(domainsData);
       setDatabases(databasesData);
       setScripts(scriptsData);
-      setLegacyCounts(legacy);
     } catch (err) {
       setError(`Failed to load data: ${err}`);
     } finally {
@@ -632,15 +621,6 @@ function App() {
           <span className="stat">{totalCount} resources</span>
         </div>
       </header>
-
-      {legacyCounts && legacyCounts.total > 0 && (
-        <div className="legacy-warning">
-          <span>⚠️</span>
-          <span>
-            {legacyCounts.total} legacy entries found. Run <code>pctrl migrate</code> to migrate.
-          </span>
-        </div>
-      )}
 
       <nav className="tabs">
         {tabs.map((tab) => (

@@ -112,17 +112,9 @@ pctrl script run <name>
 pctrl script remove <name>
 ```
 
-**Legacy Commands (still available):**
-```bash
-pctrl ssh list|add|remove|connect
-pctrl docker list|start|stop|logs
-pctrl coolify list|deploy
-pctrl git status|release
-```
-
 ### 5. TUI with Project View
 
-The TUI now includes a **Projects panel**:
+The TUI shows all v6 entities:
 
 ```
 ┌─ pctrl ─────────────────────────────────────────────────────┐
@@ -130,10 +122,10 @@ The TUI now includes a **Projects panel**:
 ├─────────────┬───────────────────────────────────────────────┤
 │ ▶ Status    │                                               │
 │   Projects  │  ● finanzapp (live) [rust, tauri]            │
-│   SSH       │  ● blog (dev) [astro]                        │
-│   Docker    │  ● api-gateway (staging) [go, docker]        │
-│   Coolify   │                                               │
-│   Git       │  Press 'a' to add a project                  │
+│   Servers   │  ● blog (dev) [astro]                        │
+│   Domains   │  ● api-gateway (staging) [go, docker]        │
+│   Databases │                                               │
+│   Scripts   │  Press 'a' to add a project                  │
 ├─────────────┴───────────────────────────────────────────────┤
 │ ↑↓ Navigate  │  a Add  │  r Refresh  │  q Quit             │
 └─────────────────────────────────────────────────────────────┘
@@ -168,10 +160,10 @@ The codebase was refactored from monolithic files into focused modules:
 | Original File | Lines | New Structure | Modules |
 |--------------|-------|---------------|---------|
 | `database/lib.rs` | 1,656 | `crud/` directory | 12 modules |
-| `cli/cli.rs` | 1,321 | `handlers/` directory | 11 modules |
+| `cli/cli.rs` | 1,321 | `handlers/` directory | 6 modules |
 | `cli/tui.rs` | 1,249 | `tui/` directory | 6 modules |
 | `core/lib.rs` | 527 | `types/` directory | 11 modules |
-| **Total** | **4,753** | **4 directories** | **40 modules** |
+| **Total** | **4,753** | **4 directories** | **35 modules** |
 
 **Benefits:**
 - Each module has single responsibility
@@ -185,9 +177,8 @@ The codebase was refactored from monolithic files into focused modules:
 - **6 Rust crates** with modular architecture
 - **4 applications** in the monorepo
 - **3 operational modes** (CLI, TUI, GUI)
-- **8 entity types** (Project, Server, Domain, Database, Container, Script, ProjectResource, Config)
-- **5 integration types** (SSH, Docker, Coolify, Git, Database)
-- **40 focused modules** (after refactoring from 4 monolithic files)
+- **6 entity types** (Project, Server, Domain, Database, Script, ProjectResource)
+- **35 focused modules** (after refactoring from 4 monolithic files)
 
 ## Key Features Implemented
 
@@ -200,8 +191,8 @@ The codebase was refactored from monolithic files into focused modules:
 ### Server Management
 - ✅ Server registry with types (vps, dedicated, local, cloud)
 - ✅ Provider tracking (hetzner, digitalocean, etc.)
-- ✅ SSH connection linking
-- ✅ Server specs auto-detection via SSH (CPU, RAM, Disk)
+- ✅ SSH connection reference field
+- 🔄 Server specs auto-detection (planned for Phase 3)
 
 ### Domain Management
 - ✅ Domain registry
@@ -220,9 +211,9 @@ The codebase was refactored from monolithic files into focused modules:
 - ✅ Script registry
 - ✅ Script types (ssh, local, docker)
 - ✅ Command storage
-- ✅ Script execution (local, ssh, docker)
-- ✅ Server association for SSH scripts
-- ✅ Docker host/container association for Docker scripts
+- ✅ Local script execution
+- 🔄 SSH script execution (planned for Phase 3)
+- 🔄 Docker script execution (planned for Phase 3)
 
 ### TUI Enhancements
 - ✅ Projects panel with status indicators
@@ -242,9 +233,9 @@ CLI Commands Tested:
 ✅ pctrl --help                       # Shows all commands
 ✅ pctrl project list                 # Lists projects
 ✅ pctrl server add/list/remove       # Server CRUD works
-✅ pctrl ssh list                     # SSH connections listed
+✅ pctrl domain list                  # Domains listed
+✅ pctrl db list                      # Database credentials listed
 ✅ pctrl script list                  # Scripts listed
-✅ pctrl docker hosts                 # Docker hosts listed
 ```
 
 ## What's Next

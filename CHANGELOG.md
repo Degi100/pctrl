@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced legacy panels (SSH, Docker, Coolify, Git) with v6 entities
   - New panels: Projects, Servers, Domains, Databases, Scripts
   - Add forms for all v6 entity types
-  - Legacy migration warning in Status panel
   - Removed legacy connection health checks
 
 - **Desktop GUI v6 Update**
@@ -21,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tabs: Projects, Servers, Domains, Databases, Scripts
   - Add forms for all v6 entity types
   - Color-coded status badges
-  - Legacy migration warning banner
   - Shared database with CLI/TUI
 
 - **Database Schema Migrations**
@@ -30,26 +28,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `migrations.rs` module for managing schema changes
   - Migration v1→v2: Added `exit_code` and `last_output` columns to scripts table
 
-- **`pctrl migrate` Command**
-  - Interactive migration from legacy to v6 structure
-  - SSH Connections → Servers (with SSH reference)
-  - Docker/Coolify/Git → Project Resources linking
-  - `--auto` flag for non-interactive migration
-  - `--cleanup` flag (planned) for removing legacy data
-
 - **Landing Page: Changelog**
   - New `/changelog` page displaying all releases
   - Fetches data from docs-api with fallback
   - Color-coded sections (Added, Changed, Fixed, etc.)
   - Stats overview (releases count, changes, latest version)
 
-### Deprecated
-- **Legacy Commands** now show deprecation warnings:
-  - `pctrl ssh` → use `pctrl server` instead
-  - `pctrl docker` → use `pctrl server` instead
-  - `pctrl coolify` → use `pctrl project deploy` instead
-  - `pctrl git` → use `pctrl project` instead
-  - All legacy commands will be removed in v0.4.0
+### Removed
+- **Legacy Commands** - Completed Phase 2.5 cleanup:
+  - `pctrl ssh` - Use `pctrl server` instead
+  - `pctrl docker` - Use containers via project resources
+  - `pctrl coolify` - Use project deployments
+  - `pctrl git` - Use project resources
+  - `pctrl migrate` - No longer needed
+- **Legacy Database Tables**:
+  - `ssh_connections`
+  - `docker_hosts`
+  - `coolify_instances`
+  - `git_repos`
+- **Legacy CLI Handlers**: Removed `handlers/legacy/` folder
+- **Legacy TUI Panels**: Migration warning removed
+- **Legacy Desktop Warning**: Migration banner removed
 
 ### Fixed
 - **Desktop database path**: Desktop now uses `data_local_dir()` to match CLI/TUI

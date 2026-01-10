@@ -283,26 +283,6 @@ fn render_status(app: &App) -> Paragraph<'static> {
         ]));
     }
 
-    // Legacy migration warning
-    let legacy_count = app.total_legacy_count();
-    if legacy_count > 0 {
-        items.push(Line::from(""));
-        items.push(Line::from(Span::styled(
-            "  ⚠ Legacy Data Warning",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        )));
-        items.push(Line::from(Span::styled(
-            format!("  {} legacy entries found.", legacy_count),
-            Style::default().fg(Color::Yellow),
-        )));
-        items.push(Line::from(Span::styled(
-            "  Run: pctrl migrate",
-            Style::default().fg(Color::Yellow),
-        )));
-    }
-
     Paragraph::new(items)
 }
 

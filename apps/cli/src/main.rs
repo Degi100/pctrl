@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use pctrl_core::{Config, Mode};
+use pctrl_core::Mode;
 use pctrl_database::Database;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -52,82 +52,41 @@ impl From<CliMode> for Mode {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    // ═══════════════════════════════════════════════════════════════════════════
-    // v6: PROJECT-CENTRIC COMMANDS
-    // ═══════════════════════════════════════════════════════════════════════════
-    /// Project management (v6 core)
+    /// Project management
     #[command(alias = "p")]
     Project {
         #[command(subcommand)]
         command: ProjectCommands,
     },
 
-    /// Server management (v6)
+    /// Server management
     Server {
         #[command(subcommand)]
         command: ServerCommands,
     },
 
-    /// Domain management (v6)
+    /// Domain management
     Domain {
         #[command(subcommand)]
         command: DomainCommands,
     },
 
-    /// Database credentials management (v6)
+    /// Database credentials management
     #[command(alias = "db")]
     Database {
         #[command(subcommand)]
         command: DatabaseCommands,
     },
 
-    /// Script management (v6)
+    /// Script management
     Script {
         #[command(subcommand)]
         command: ScriptCommands,
     },
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // LEGACY COMMANDS (still supported)
-    // ═══════════════════════════════════════════════════════════════════════════
-    /// SSH connection management
-    Ssh {
-        #[command(subcommand)]
-        command: SshCommands,
-    },
-    /// Docker container management
-    Docker {
-        #[command(subcommand)]
-        command: DockerCommands,
-    },
-    /// Coolify deployment management
-    Coolify {
-        #[command(subcommand)]
-        command: CoolifyCommands,
-    },
-    /// Git release management
-    Git {
-        #[command(subcommand)]
-        command: GitCommands,
-    },
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // MIGRATION
-    // ═══════════════════════════════════════════════════════════════════════════
-    /// Migrate legacy data to v6 project-centric structure
-    Migrate {
-        /// Automatic migration without prompts
-        #[arg(long)]
-        auto: bool,
-
-        /// Remove legacy data after migration
-        #[arg(long)]
-        cleanup: bool,
-    },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// v6: PROJECT COMMANDS
+// PROJECT COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Subcommand)]
@@ -162,7 +121,7 @@ pub enum ProjectCommands {
     Link {
         /// Project name or ID
         project: String,
-        /// Resource type: server, container, database, domain, git, coolify, script
+        /// Resource type: server, container, database, domain, script
         resource_type: String,
         /// Resource ID
         resource_id: String,
@@ -180,7 +139,7 @@ pub enum ProjectCommands {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// v6: SERVER COMMANDS
+// SERVER COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Subcommand)]
@@ -219,7 +178,7 @@ pub enum ServerCommands {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// v6: DOMAIN COMMANDS
+// DOMAIN COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Subcommand)]
@@ -262,7 +221,7 @@ pub enum DomainCommands {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// v6: DATABASE COMMANDS
+// DATABASE COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Subcommand)]
@@ -321,7 +280,7 @@ pub enum DatabaseCommands {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// v6: SCRIPT COMMANDS
+// SCRIPT COMMANDS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[derive(Subcommand)]
@@ -339,7 +298,7 @@ pub enum ScriptCommands {
         #[arg(short, long)]
         description: Option<String>,
         /// Script type: ssh, local, docker
-        #[arg(short = 't', long, default_value = "ssh")]
+        #[arg(short = 't', long, default_value = "local")]
         script_type: String,
         /// Server ID to run on (for ssh scripts)
         #[arg(short, long)]
@@ -377,120 +336,6 @@ pub enum ScriptCommands {
     },
 }
 
-#[derive(Subcommand)]
-pub enum SshCommands {
-    /// List SSH connections
-    List,
-    /// Add a new SSH connection
-    Add {
-        /// Connection name (used as ID)
-        name: String,
-        /// Host address
-        host: String,
-        /// Username
-        #[arg(short, long)]
-        user: String,
-        /// Port (default: 22)
-        #[arg(short, long, default_value = "22")]
-        port: u16,
-        /// Path to private key (omit for password auth)
-        #[arg(short, long)]
-        key: Option<String>,
-        /// Use password authentication (instead of public key)
-        #[arg(long)]
-        password: bool,
-    },
-    /// Remove an SSH connection
-    Remove {
-        /// Connection ID to remove
-        id: String,
-    },
-    /// Connect to an SSH host
-    Connect { id: String },
-    /// Execute command on remote host
-    Exec { id: String, command: String },
-}
-
-#[derive(Subcommand)]
-pub enum DockerCommands {
-    /// List configured Docker hosts
-    Hosts,
-    /// Add a new Docker host
-    Add {
-        /// Host name (used as ID)
-        name: String,
-        /// Docker socket URL (e.g., unix:///var/run/docker.sock or tcp://localhost:2375)
-        #[arg(short, long, default_value = "unix:///var/run/docker.sock")]
-        url: String,
-    },
-    /// Remove a Docker host
-    Remove { id: String },
-    /// List containers on a host
-    List { host_id: String },
-    /// Start a container
-    Start {
-        host_id: String,
-        container_id: String,
-    },
-    /// Stop a container
-    Stop {
-        host_id: String,
-        container_id: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum CoolifyCommands {
-    /// List configured Coolify instances
-    Instances,
-    /// Add a new Coolify instance
-    Add {
-        /// Instance name (used as ID)
-        name: String,
-        /// Coolify URL (e.g., https://coolify.example.com)
-        #[arg(short, long)]
-        url: String,
-        /// API token
-        #[arg(short, long)]
-        token: String,
-    },
-    /// Remove a Coolify instance
-    Remove { id: String },
-    /// List deployments
-    List { instance_id: String },
-    /// Deploy a project
-    Deploy {
-        instance_id: String,
-        project_id: String,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum GitCommands {
-    /// List configured Git repositories
-    Repos,
-    /// Add a Git repository
-    Add {
-        /// Repository name (used as ID)
-        name: String,
-        /// Path to local repository
-        #[arg(short, long)]
-        path: String,
-    },
-    /// Remove a Git repository
-    Remove { id: String },
-    /// List releases/tags
-    List { repo_id: String },
-    /// Create a new release
-    Create {
-        repo_id: String,
-        tag: String,
-        message: String,
-    },
-    /// Push tags to remote
-    Push { repo_id: String },
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
@@ -515,19 +360,12 @@ async fn main() -> anyhow::Result<()> {
     let db = Arc::new(db);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. Config laden
-    // ─────────────────────────────────────────────────────────────────────────
-    let config = db.load_config().await.unwrap_or_else(|_| Config::default());
-
-    let config = Arc::new(config);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 3. Mode auswählen
+    // 2. Mode auswählen
     // ─────────────────────────────────────────────────────────────────────────
 
     // If a subcommand is provided, always use CLI mode to handle it
     if let Some(command) = cli.command {
-        handlers::handle_command(command, config.clone(), db.clone()).await?;
+        handlers::handle_command(command, db.clone()).await?;
     } else {
         // No subcommand - use the specified mode (default: TUI)
         match mode {
@@ -535,12 +373,20 @@ async fn main() -> anyhow::Result<()> {
                 // Styled status display
                 style::print_banner(env!("CARGO_PKG_VERSION"));
 
+                // Load v6 entity counts
+                let projects = db.list_projects().await.unwrap_or_default();
+                let servers = db.list_servers().await.unwrap_or_default();
+                let domains = db.list_domains().await.unwrap_or_default();
+                let databases = db.list_database_credentials().await.unwrap_or_default();
+                let scripts = db.list_scripts().await.unwrap_or_default();
+
                 println!("  {}Status{}", style::BOLD, style::RESET);
                 style::divider();
-                style::kv_count("SSH Connections", config.ssh_connections.len());
-                style::kv_count("Docker Hosts", config.docker_hosts.len());
-                style::kv_count("Coolify Instances", config.coolify_instances.len());
-                style::kv_count("Git Repos", config.git_repos.len());
+                style::kv_count("Projects", projects.len());
+                style::kv_count("Servers", servers.len());
+                style::kv_count("Domains", domains.len());
+                style::kv_count("Databases", databases.len());
+                style::kv_count("Scripts", scripts.len());
                 style::divider();
                 println!(
                     "  {}Database:{} {}",

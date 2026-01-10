@@ -1,12 +1,10 @@
 //! Script command handler
 
 use crate::ScriptCommands;
-use pctrl_core::{AuthMethod, Config, Script, ScriptType};
+use pctrl_core::{Script, ScriptType};
 use pctrl_database::Database;
-use pctrl_docker::DockerManager;
-use pctrl_ssh::SshManager;
 
-pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> anyhow::Result<()> {
+pub async fn handle(command: ScriptCommands, db: &Database) -> anyhow::Result<()> {
     match command {
         ScriptCommands::List => {
             let scripts = db.list_scripts().await?;
@@ -14,9 +12,7 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
                 println!("No scripts configured.");
                 println!();
                 println!("Add one with:");
-                println!("  pctrl script add <name> -c <command> [-s server]");
-                println!("  pctrl script add <name> -c <command> -t local");
-                println!("  pctrl script add <name> -c <command> -t docker --docker-host <id> --container <id>");
+                println!("  pctrl script add <name> -c <command>");
             } else {
                 println!("Scripts ({}):", scripts.len());
                 println!();
@@ -157,10 +153,16 @@ pub async fn handle(command: ScriptCommands, config: &Config, db: &Database) -> 
 
             let (result, exit_code, output) = match script.script_type {
                 ScriptType::Local => execute_local(&script.command),
-
-                ScriptType::Ssh => execute_ssh(&script, config, db).await?,
-
-                ScriptType::Docker => execute_docker(&script, config).await?,
+                ScriptType::Ssh => {
+                    println!("⚠️  SSH script execution not yet implemented in v6.");
+                    println!("    Use local scripts for now.");
+                    return Ok(());
+                }
+                ScriptType::Docker => {
+                    println!("⚠️  Docker script execution not yet implemented in v6.");
+                    println!("    Use local scripts for now.");
+                    return Ok(());
+                }
             };
 
             // Update script result in database
@@ -229,91 +231,6 @@ fn execute_local(command: &str) -> ExecResult {
             let error_msg = format!("Failed to execute: {}", e);
             println!("✗ {}", error_msg);
             (pctrl_core::ScriptResult::Error, None, Some(error_msg))
-        }
-    }
-}
-
-async fn execute_ssh(
-    script: &Script,
-    config: &Config,
-    db: &Database,
-) -> anyhow::Result<ExecResult> {
-    let server_id = script.server_id.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("SSH script requires a server_id. Use -s <server> when adding.")
-    })?;
-
-    // Get server to find SSH connection
-    let server = db
-        .get_server(server_id)
-        .await?
-        .or(db.get_server_by_name(server_id).await?)
-        .ok_or_else(|| anyhow::anyhow!("Server '{}' not found", server_id))?;
-
-    let ssh_id = server.ssh_connection_id.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("Server '{}' has no SSH connection configured", server.name)
-    })?;
-
-    // Initialize SSH manager
-    let mut ssh_manager = SshManager::new();
-    for conn in &config.ssh_connections {
-        ssh_manager.add_connection(conn.clone());
-    }
-
-    // Check if password auth is needed
-    let password = if let Some(conn) = ssh_manager.get_connection(ssh_id) {
-        if matches!(conn.auth_method, AuthMethod::Password) {
-            print!("Password for {}@{}: ", conn.username, conn.host);
-            std::io::Write::flush(&mut std::io::stdout())?;
-            Some(rpassword::read_password()?)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    match ssh_manager.execute_command_with_password(ssh_id, &script.command, password.as_deref()) {
-        Ok(output) => {
-            println!("{}", output);
-            println!("✓ Script completed successfully");
-            Ok((pctrl_core::ScriptResult::Success, Some(0), Some(output)))
-        }
-        Err(e) => {
-            let error_msg = format!("SSH execution failed: {}", e);
-            println!("✗ {}", error_msg);
-            Ok((pctrl_core::ScriptResult::Error, None, Some(error_msg)))
-        }
-    }
-}
-
-async fn execute_docker(script: &Script, config: &Config) -> anyhow::Result<ExecResult> {
-    let docker_host_id = script.docker_host_id.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("Docker script requires docker_host_id. Use --docker-host when adding.")
-    })?;
-
-    let container_id = script.container_id.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("Docker script requires container_id. Use --container when adding.")
-    })?;
-
-    // Initialize Docker manager
-    let mut docker_manager = DockerManager::new();
-    for host in &config.docker_hosts {
-        docker_manager.add_host(host.clone());
-    }
-
-    match docker_manager
-        .exec_in_container(docker_host_id, container_id, &script.command)
-        .await
-    {
-        Ok(output) => {
-            println!("{}", output);
-            println!("✓ Script completed successfully");
-            Ok((pctrl_core::ScriptResult::Success, Some(0), Some(output)))
-        }
-        Err(e) => {
-            let error_msg = format!("Docker execution failed: {}", e);
-            println!("✗ {}", error_msg);
-            Ok((pctrl_core::ScriptResult::Error, None, Some(error_msg)))
         }
     }
 }

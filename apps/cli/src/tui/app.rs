@@ -14,11 +14,6 @@ pub struct App {
     pub domains: Vec<Domain>,
     pub databases: Vec<DatabaseCredentials>,
     pub scripts: Vec<Script>,
-    // Legacy counts (for migration warning)
-    pub legacy_ssh_count: usize,
-    pub legacy_docker_count: usize,
-    pub legacy_coolify_count: usize,
-    pub legacy_git_count: usize,
     // UI state
     pub input_mode: InputMode,
     pub input_form: InputForm,
@@ -35,10 +30,6 @@ impl App {
             domains: Vec::new(),
             databases: Vec::new(),
             scripts: Vec::new(),
-            legacy_ssh_count: 0,
-            legacy_docker_count: 0,
-            legacy_coolify_count: 0,
-            legacy_git_count: 0,
             input_mode: InputMode::Normal,
             input_form: InputForm::default(),
             loading: false,
@@ -65,22 +56,7 @@ impl App {
             self.scripts = scripts;
         }
 
-        // Load legacy counts for migration warning
-        if let Ok(config) = self.db.load_config().await {
-            self.legacy_ssh_count = config.ssh_connections.len();
-            self.legacy_docker_count = config.docker_hosts.len();
-            self.legacy_coolify_count = config.coolify_instances.len();
-            self.legacy_git_count = config.git_repos.len();
-        }
-
         self.loading = false;
-    }
-
-    pub fn total_legacy_count(&self) -> usize {
-        self.legacy_ssh_count
-            + self.legacy_docker_count
-            + self.legacy_coolify_count
-            + self.legacy_git_count
     }
 
     pub fn get_form_fields(&self) -> Vec<(&'static str, &str)> {

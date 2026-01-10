@@ -360,41 +360,6 @@ async fn delete_script(state: State<'_, AppState>, id: String) -> Result<bool, S
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Legacy Count Command (for migration warning)
-// ─────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize)]
-pub struct LegacyCounts {
-    pub ssh: usize,
-    pub docker: usize,
-    pub coolify: usize,
-    pub git: usize,
-    pub total: usize,
-}
-
-#[tauri::command]
-async fn get_legacy_counts(state: State<'_, AppState>) -> Result<LegacyCounts, String> {
-    ensure_db(&state).await?;
-    let db_guard = state.db.lock().await;
-    let db = db_guard.as_ref().ok_or("Database not initialized")?;
-
-    let config = db.load_config().await.map_err(|e| e.to_string())?;
-
-    let counts = LegacyCounts {
-        ssh: config.ssh_connections.len(),
-        docker: config.docker_hosts.len(),
-        coolify: config.coolify_instances.len(),
-        git: config.git_repos.len(),
-        total: config.ssh_connections.len()
-            + config.docker_hosts.len()
-            + config.coolify_instances.len()
-            + config.git_repos.len(),
-    };
-
-    Ok(counts)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -420,7 +385,6 @@ fn main() {
             list_scripts,
             add_script,
             delete_script,
-            get_legacy_counts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

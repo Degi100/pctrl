@@ -93,17 +93,6 @@ pub fn warn(msg: &str) {
     println!("{}⚠{}  {}", YELLOW, RESET, msg);
 }
 
-/// Deprecation warning for legacy commands
-pub fn deprecation_warning(old_cmd: &str, new_cmd: &str) {
-    println!();
-    println!(
-        "{}⚠{}  {}Warning:{} '{}pctrl {}{}' is deprecated and will be removed in v0.4.0",
-        YELLOW, RESET, YELLOW, RESET, BOLD, old_cmd, RESET
-    );
-    println!("   Use '{}pctrl {}{}' instead.", CYAN, new_cmd, RESET);
-    println!();
-}
-
 /// Info message
 #[allow(dead_code)]
 pub fn info(msg: &str) {
