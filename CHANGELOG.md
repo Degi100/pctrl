@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Legacy migration warning in Status panel
   - Removed legacy connection health checks
 
+- **Desktop GUI v6 Update**
+  - Tauri backend with v6 DTOs and Commands
+  - React frontend with v6 entity management
+  - Tabs: Projects, Servers, Domains, Databases, Scripts
+  - Add forms for all v6 entity types
+  - Color-coded status badges
+  - Legacy migration warning banner
+  - Shared database with CLI/TUI
+
 - **Database Schema Migrations**
   - Automatic schema versioning in metadata table
   - Auto-migration on database startup
@@ -42,10 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pctrl git` → use `pctrl project` instead
   - All legacy commands will be removed in v0.4.0
 
+### Fixed
+- **Desktop database path**: Desktop now uses `data_local_dir()` to match CLI/TUI
+  - Previously used `data_dir()` which pointed to different folder on Windows
+  - All apps now share `%LOCALAPPDATA%\pctrl\pctrl.db`
+
 ### Planned
 - TUI detail views and item selection
 - TUI edit/delete functionality
-- Desktop GUI functionality
 - Real-time container monitoring
 - SSH password authentication
 

@@ -10,7 +10,11 @@
       "Bash(wc:*)",
       "Bash(cargo run:*)",
       "Bash(./deploy.sh:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(npm run build:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)"
     ]
   }
 }

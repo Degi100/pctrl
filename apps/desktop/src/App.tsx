@@ -1,227 +1,420 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 
-// Types matching Rust DTOs
-interface SshConnection {
+// ─────────────────────────────────────────────────────────────────────────────
+// v6 Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  stack: string[];
+  status: string;
+}
+
+interface Server {
   id: string;
   name: string;
   host: string;
-  port: number;
-  username: string;
-  auth_method: { Password: null } | { PublicKey: { key_path: string } };
+  server_type: string;
+  provider: string | null;
 }
 
-interface DockerHost {
+interface Domain {
+  id: string;
+  domain: string;
+  domain_type: string;
+  ssl: boolean;
+}
+
+interface DatabaseCredentials {
   id: string;
   name: string;
-  url: string;
+  db_type: string;
+  host: string | null;
+  port: number | null;
+  username: string | null;
 }
 
-interface CoolifyInstance {
+interface Script {
   id: string;
   name: string;
-  url: string;
-  api_key: string;
+  command: string;
+  script_type: string;
+  description: string | null;
 }
 
-interface GitRepo {
-  id: string;
-  name: string;
-  path: string;
-  remote_url: string | null;
-}
-
-interface Config {
-  ssh_connections: SshConnection[];
-  docker_hosts: DockerHost[];
-  coolify_instances: CoolifyInstance[];
-  git_repos: GitRepo[];
+interface LegacyCounts {
+  ssh: number;
+  docker: number;
+  coolify: number;
+  git: number;
+  total: number;
 }
 
 interface Tab {
   id: string;
   label: string;
+  color: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// App Component
+// ─────────────────────────────────────────────────────────────────────────────
+
 function App() {
-  const [activeTab, setActiveTab] = useState('ssh');
+  const [activeTab, setActiveTab] = useState('projects');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Data state
-  const [sshConnections, setSshConnections] = useState<SshConnection[]>([]);
-  const [dockerHosts, setDockerHosts] = useState<DockerHost[]>([]);
-  const [coolifyInstances, setCoolifyInstances] = useState<CoolifyInstance[]>([]);
-  const [gitRepos, setGitRepos] = useState<GitRepo[]>([]);
+  // v6 Data state
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [servers, setServers] = useState<Server[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [databases, setDatabases] = useState<DatabaseCredentials[]>([]);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [legacyCounts, setLegacyCounts] = useState<LegacyCounts | null>(null);
 
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
   const tabs: Tab[] = [
-    { id: 'ssh', label: 'SSH Connections' },
-    { id: 'docker', label: 'Docker Hosts' },
-    { id: 'coolify', label: 'Coolify Instances' },
-    { id: 'git', label: 'Git Repositories' },
+    { id: 'projects', label: 'Projects', color: '#00bcd4' },
+    { id: 'servers', label: 'Servers', color: '#4caf50' },
+    { id: 'domains', label: 'Domains', color: '#2196f3' },
+    { id: 'databases', label: 'Databases', color: '#9c27b0' },
+    { id: 'scripts', label: 'Scripts', color: '#ff9800' },
   ];
 
-  // Load config on mount
+  // Load data on mount
   useEffect(() => {
-    loadConfig();
+    loadAllData();
   }, []);
 
-  const loadConfig = async () => {
+  const loadAllData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const config = await invoke<Config>('get_config');
-      setSshConnections(config.ssh_connections);
-      setDockerHosts(config.docker_hosts);
-      setCoolifyInstances(config.coolify_instances);
-      setGitRepos(config.git_repos);
+
+      const [projectsData, serversData, domainsData, databasesData, scriptsData, legacy] =
+        await Promise.all([
+          invoke<Project[]>('list_projects'),
+          invoke<Server[]>('list_servers'),
+          invoke<Domain[]>('list_domains'),
+          invoke<DatabaseCredentials[]>('list_databases'),
+          invoke<Script[]>('list_scripts'),
+          invoke<LegacyCounts>('get_legacy_counts'),
+        ]);
+
+      setProjects(projectsData);
+      setServers(serversData);
+      setDomains(domainsData);
+      setDatabases(databasesData);
+      setScripts(scriptsData);
+      setLegacyCounts(legacy);
     } catch (err) {
-      setError(`Failed to load config: ${err}`);
+      setError(`Failed to load data: ${err}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // SSH handlers
-  const addSsh = async () => {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Add Handlers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const addProject = async () => {
     try {
-      await invoke('add_ssh', {
+      await invoke('add_project', {
+        data: {
+          name: formData.name,
+          description: formData.description || null,
+          stack: formData.stack ? formData.stack.split(',').map((s) => s.trim()) : [],
+          status: formData.status || 'dev',
+        },
+      });
+      closeForm();
+      loadAllData();
+    } catch (err) {
+      setError(`Failed to add project: ${err}`);
+    }
+  };
+
+  const addServer = async () => {
+    try {
+      await invoke('add_server', {
         data: {
           name: formData.name,
           host: formData.host,
-          port: formData.port ? parseInt(formData.port) : 22,
-          username: formData.username || 'root',
-          key_path: formData.key_path || '~/.ssh/id_rsa',
+          server_type: formData.server_type || 'vps',
+          provider: formData.provider || null,
         },
       });
-      setShowForm(false);
-      setFormData({});
-      loadConfig();
+      closeForm();
+      loadAllData();
     } catch (err) {
-      setError(`Failed to add SSH: ${err}`);
+      setError(`Failed to add server: ${err}`);
     }
   };
 
-  const deleteSsh = async (id: string) => {
+  const addDomain = async () => {
     try {
-      await invoke('delete_ssh', { id });
-      loadConfig();
+      await invoke('add_domain', {
+        data: {
+          domain: formData.domain,
+          domain_type: formData.domain_type || 'production',
+          ssl: formData.ssl !== 'false',
+        },
+      });
+      closeForm();
+      loadAllData();
     } catch (err) {
-      setError(`Failed to delete SSH: ${err}`);
+      setError(`Failed to add domain: ${err}`);
     }
   };
 
-  // Docker handlers
-  const addDocker = async () => {
+  const addDatabase = async () => {
     try {
-      await invoke('add_docker', {
+      await invoke('add_database', {
         data: {
           name: formData.name,
-          url: formData.url || 'unix:///var/run/docker.sock',
+          db_type: formData.db_type || 'postgres',
+          host: formData.host || null,
+          port: formData.port ? parseInt(formData.port) : null,
+          username: formData.username || null,
+          password: formData.password || null,
         },
       });
-      setShowForm(false);
-      setFormData({});
-      loadConfig();
+      closeForm();
+      loadAllData();
     } catch (err) {
-      setError(`Failed to add Docker: ${err}`);
+      setError(`Failed to add database: ${err}`);
     }
   };
 
-  const deleteDocker = async (id: string) => {
+  const addScript = async () => {
     try {
-      await invoke('delete_docker', { id });
-      loadConfig();
-    } catch (err) {
-      setError(`Failed to delete Docker: ${err}`);
-    }
-  };
-
-  // Coolify handlers
-  const addCoolify = async () => {
-    try {
-      await invoke('add_coolify', {
+      await invoke('add_script', {
         data: {
           name: formData.name,
-          url: formData.url,
-          api_key: formData.api_key,
+          command: formData.command,
+          script_type: formData.script_type || 'local',
+          description: formData.description || null,
         },
       });
-      setShowForm(false);
-      setFormData({});
-      loadConfig();
+      closeForm();
+      loadAllData();
     } catch (err) {
-      setError(`Failed to add Coolify: ${err}`);
+      setError(`Failed to add script: ${err}`);
     }
   };
 
-  const deleteCoolify = async (id: string) => {
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Delete Handlers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const deleteProject = async (id: string) => {
     try {
-      await invoke('delete_coolify', { id });
-      loadConfig();
+      await invoke('delete_project', { id });
+      loadAllData();
     } catch (err) {
-      setError(`Failed to delete Coolify: ${err}`);
+      setError(`Failed to delete: ${err}`);
     }
   };
 
-  // Git handlers
-  const addGit = async () => {
+  const deleteServer = async (id: string) => {
     try {
-      await invoke('add_git', {
-        data: {
-          name: formData.name,
-          path: formData.path,
-          remote_url: formData.remote_url || null,
-        },
-      });
-      setShowForm(false);
-      setFormData({});
-      loadConfig();
+      await invoke('delete_server', { id });
+      loadAllData();
     } catch (err) {
-      setError(`Failed to add Git: ${err}`);
+      setError(`Failed to delete: ${err}`);
     }
   };
 
-  const deleteGit = async (id: string) => {
+  const deleteDomain = async (id: string) => {
     try {
-      await invoke('delete_git', { id });
-      loadConfig();
+      await invoke('delete_domain', { id });
+      loadAllData();
     } catch (err) {
-      setError(`Failed to delete Git: ${err}`);
+      setError(`Failed to delete: ${err}`);
     }
+  };
+
+  const deleteDatabase = async (id: string) => {
+    try {
+      await invoke('delete_database', { id });
+      loadAllData();
+    } catch (err) {
+      setError(`Failed to delete: ${err}`);
+    }
+  };
+
+  const deleteScript = async (id: string) => {
+    try {
+      await invoke('delete_script', { id });
+      loadAllData();
+    } catch (err) {
+      setError(`Failed to delete: ${err}`);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Form Helpers
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const closeForm = () => {
+    setShowForm(false);
+    setFormData({});
   };
 
   const handleSubmit = () => {
     switch (activeTab) {
-      case 'ssh':
-        addSsh();
+      case 'projects':
+        addProject();
         break;
-      case 'docker':
-        addDocker();
+      case 'servers':
+        addServer();
         break;
-      case 'coolify':
-        addCoolify();
+      case 'domains':
+        addDomain();
         break;
-      case 'git':
-        addGit();
+      case 'databases':
+        addDatabase();
+        break;
+      case 'scripts':
+        addScript();
         break;
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'dev':
+        return '#ff9800';
+      case 'staging':
+        return '#2196f3';
+      case 'live':
+        return '#4caf50';
+      case 'archived':
+        return '#666';
+      default:
+        return '#999';
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render Forms
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const renderForm = () => {
     const forms: Record<string, JSX.Element> = {
-      ssh: (
+      projects: (
         <>
           <input
             type="text"
-            placeholder="Name"
+            placeholder="Name *"
             value={formData.name || ''}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
+          <input
+            type="text"
+            placeholder="Description"
+            value={formData.description || ''}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Stack (comma-separated)"
+            value={formData.stack || ''}
+            onChange={(e) => setFormData({ ...formData, stack: e.target.value })}
+          />
+          <select
+            value={formData.status || 'dev'}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+          >
+            <option value="dev">Dev</option>
+            <option value="staging">Staging</option>
+            <option value="live">Live</option>
+            <option value="archived">Archived</option>
+          </select>
+        </>
+      ),
+      servers: (
+        <>
+          <input
+            type="text"
+            placeholder="Name *"
+            value={formData.name || ''}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="Host *"
+            value={formData.host || ''}
+            onChange={(e) => setFormData({ ...formData, host: e.target.value })}
+          />
+          <select
+            value={formData.server_type || 'vps'}
+            onChange={(e) => setFormData({ ...formData, server_type: e.target.value })}
+          >
+            <option value="vps">VPS</option>
+            <option value="dedicated">Dedicated</option>
+            <option value="local">Local</option>
+            <option value="cloud">Cloud</option>
+          </select>
+          <input
+            type="text"
+            placeholder="Provider (optional)"
+            value={formData.provider || ''}
+            onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+          />
+        </>
+      ),
+      domains: (
+        <>
+          <input
+            type="text"
+            placeholder="Domain *"
+            value={formData.domain || ''}
+            onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+          />
+          <select
+            value={formData.domain_type || 'production'}
+            onChange={(e) => setFormData({ ...formData, domain_type: e.target.value })}
+          >
+            <option value="production">Production</option>
+            <option value="staging">Staging</option>
+            <option value="dev">Dev</option>
+          </select>
+          <select
+            value={formData.ssl || 'true'}
+            onChange={(e) => setFormData({ ...formData, ssl: e.target.value })}
+          >
+            <option value="true">SSL Enabled</option>
+            <option value="false">SSL Disabled</option>
+          </select>
+        </>
+      ),
+      databases: (
+        <>
+          <input
+            type="text"
+            placeholder="Name *"
+            value={formData.name || ''}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <select
+            value={formData.db_type || 'postgres'}
+            onChange={(e) => setFormData({ ...formData, db_type: e.target.value })}
+          >
+            <option value="postgres">PostgreSQL</option>
+            <option value="mysql">MySQL</option>
+            <option value="mongodb">MongoDB</option>
+            <option value="redis">Redis</option>
+            <option value="sqlite">SQLite</option>
+          </select>
           <input
             type="text"
             placeholder="Host"
@@ -230,82 +423,34 @@ function App() {
           />
           <input
             type="number"
-            placeholder="Port (22)"
+            placeholder="Port"
             value={formData.port || ''}
             onChange={(e) => setFormData({ ...formData, port: e.target.value })}
           />
-          <input
-            type="text"
-            placeholder="Username (root)"
-            value={formData.username || ''}
-            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Key Path (~/.ssh/id_rsa)"
-            value={formData.key_path || ''}
-            onChange={(e) => setFormData({ ...formData, key_path: e.target.value })}
-          />
         </>
       ),
-      docker: (
+      scripts: (
         <>
           <input
             type="text"
-            placeholder="Name"
+            placeholder="Name *"
             value={formData.name || ''}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           />
           <input
             type="text"
-            placeholder="URL (unix:///var/run/docker.sock)"
-            value={formData.url || ''}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+            placeholder="Command *"
+            value={formData.command || ''}
+            onChange={(e) => setFormData({ ...formData, command: e.target.value })}
           />
-        </>
-      ),
-      coolify: (
-        <>
-          <input
-            type="text"
-            placeholder="Name"
-            value={formData.name || ''}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="URL (https://coolify.example.com)"
-            value={formData.url || ''}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-          />
-          <input
-            type="password"
-            placeholder="API Key"
-            value={formData.api_key || ''}
-            onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-          />
-        </>
-      ),
-      git: (
-        <>
-          <input
-            type="text"
-            placeholder="Name"
-            value={formData.name || ''}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Path (/path/to/repo)"
-            value={formData.path || ''}
-            onChange={(e) => setFormData({ ...formData, path: e.target.value })}
-          />
-          <input
-            type="text"
-            placeholder="Remote URL (optional)"
-            value={formData.remote_url || ''}
-            onChange={(e) => setFormData({ ...formData, remote_url: e.target.value })}
-          />
+          <select
+            value={formData.script_type || 'local'}
+            onChange={(e) => setFormData({ ...formData, script_type: e.target.value })}
+          >
+            <option value="local">Local</option>
+            <option value="ssh">SSH</option>
+            <option value="docker">Docker</option>
+          </select>
         </>
       ),
     };
@@ -316,7 +461,7 @@ function App() {
           <h3>Add {tabs.find((t) => t.id === activeTab)?.label.slice(0, -1)}</h3>
           <div className="form-fields">{forms[activeTab]}</div>
           <div className="form-actions">
-            <button className="btn-secondary" onClick={() => { setShowForm(false); setFormData({}); }}>
+            <button className="btn-secondary" onClick={closeForm}>
               Cancel
             </button>
             <button className="btn-primary" onClick={handleSubmit}>
@@ -328,102 +473,128 @@ function App() {
     );
   };
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render Lists
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const renderList = () => {
     if (loading) {
       return <div className="loading">Loading...</div>;
     }
 
     const lists: Record<string, JSX.Element> = {
-      ssh: sshConnections.length > 0 ? (
-        <ul className="item-list">
-          {sshConnections.map((conn) => (
-            <li key={conn.id} className="item">
-              <div className="item-info">
-                <span className="item-name">{conn.name}</span>
-                <span className="item-detail">
-                  {conn.username}@{conn.host}:{conn.port}
-                </span>
-              </div>
-              <button className="btn-delete" onClick={() => deleteSsh(conn.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty-state">
-          <p>No SSH connections configured yet.</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            Add Connection
-          </button>
-        </div>
-      ),
-      docker: dockerHosts.length > 0 ? (
-        <ul className="item-list">
-          {dockerHosts.map((host) => (
-            <li key={host.id} className="item">
-              <div className="item-info">
-                <span className="item-name">{host.name}</span>
-                <span className="item-detail">{host.url}</span>
-              </div>
-              <button className="btn-delete" onClick={() => deleteDocker(host.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty-state">
-          <p>No Docker hosts configured yet.</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            Add Host
-          </button>
-        </div>
-      ),
-      coolify: coolifyInstances.length > 0 ? (
-        <ul className="item-list">
-          {coolifyInstances.map((instance) => (
-            <li key={instance.id} className="item">
-              <div className="item-info">
-                <span className="item-name">{instance.name}</span>
-                <span className="item-detail">{instance.url}</span>
-              </div>
-              <button className="btn-delete" onClick={() => deleteCoolify(instance.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty-state">
-          <p>No Coolify instances configured yet.</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            Add Instance
-          </button>
-        </div>
-      ),
-      git: gitRepos.length > 0 ? (
-        <ul className="item-list">
-          {gitRepos.map((repo) => (
-            <li key={repo.id} className="item">
-              <div className="item-info">
-                <span className="item-name">{repo.name}</span>
-                <span className="item-detail">{repo.path}</span>
-              </div>
-              <button className="btn-delete" onClick={() => deleteGit(repo.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="empty-state">
-          <p>No Git repositories configured yet.</p>
-          <button className="btn-primary" onClick={() => setShowForm(true)}>
-            Add Repository
-          </button>
-        </div>
-      ),
+      projects:
+        projects.length > 0 ? (
+          <ul className="item-list">
+            {projects.map((item) => (
+              <li key={item.id} className="item">
+                <div className="item-info">
+                  <span className="item-status" style={{ backgroundColor: getStatusColor(item.status) }} />
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-badge" style={{ backgroundColor: getStatusColor(item.status) }}>
+                    {item.status}
+                  </span>
+                  {item.stack.length > 0 && (
+                    <span className="item-detail">[{item.stack.join(', ')}]</span>
+                  )}
+                </div>
+                <button className="btn-delete" onClick={() => deleteProject(item.id)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState tab="projects" onAdd={() => setShowForm(true)} />
+        ),
+      servers:
+        servers.length > 0 ? (
+          <ul className="item-list">
+            {servers.map((item) => (
+              <li key={item.id} className="item">
+                <div className="item-info">
+                  <span className="item-status" style={{ backgroundColor: '#4caf50' }} />
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-detail">{item.host}</span>
+                  <span className="item-badge">{item.server_type}</span>
+                </div>
+                <button className="btn-delete" onClick={() => deleteServer(item.id)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState tab="servers" onAdd={() => setShowForm(true)} />
+        ),
+      domains:
+        domains.length > 0 ? (
+          <ul className="item-list">
+            {domains.map((item) => (
+              <li key={item.id} className="item">
+                <div className="item-info">
+                  <span className="item-ssl">{item.ssl ? '🔒' : '🔓'}</span>
+                  <span className="item-name">{item.domain}</span>
+                  <span className="item-badge">{item.domain_type}</span>
+                </div>
+                <button className="btn-delete" onClick={() => deleteDomain(item.id)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState tab="domains" onAdd={() => setShowForm(true)} />
+        ),
+      databases:
+        databases.length > 0 ? (
+          <ul className="item-list">
+            {databases.map((item) => (
+              <li key={item.id} className="item">
+                <div className="item-info">
+                  <span className="item-status" style={{ backgroundColor: '#9c27b0' }} />
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-badge" style={{ backgroundColor: '#9c27b0' }}>
+                    {item.db_type}
+                  </span>
+                  <span className="item-detail">
+                    {item.host || 'localhost'}
+                    {item.port && `:${item.port}`}
+                  </span>
+                </div>
+                <button className="btn-delete" onClick={() => deleteDatabase(item.id)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState tab="databases" onAdd={() => setShowForm(true)} />
+        ),
+      scripts:
+        scripts.length > 0 ? (
+          <ul className="item-list">
+            {scripts.map((item) => (
+              <li key={item.id} className="item">
+                <div className="item-info">
+                  <span className="item-status" style={{ backgroundColor: '#ff9800' }} />
+                  <span className="item-name">{item.name}</span>
+                  <span className="item-badge" style={{ backgroundColor: '#ff9800' }}>
+                    {item.script_type}
+                  </span>
+                  <span className="item-detail item-command">
+                    {item.command.length > 40 ? item.command.slice(0, 40) + '...' : item.command}
+                  </span>
+                </div>
+                <button className="btn-delete" onClick={() => deleteScript(item.id)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState tab="scripts" onAdd={() => setShowForm(true)} />
+        ),
     };
 
     return lists[activeTab];
@@ -431,26 +602,52 @@ function App() {
 
   const hasItems = () => {
     switch (activeTab) {
-      case 'ssh': return sshConnections.length > 0;
-      case 'docker': return dockerHosts.length > 0;
-      case 'coolify': return coolifyInstances.length > 0;
-      case 'git': return gitRepos.length > 0;
-      default: return false;
+      case 'projects':
+        return projects.length > 0;
+      case 'servers':
+        return servers.length > 0;
+      case 'domains':
+        return domains.length > 0;
+      case 'databases':
+        return databases.length > 0;
+      case 'scripts':
+        return scripts.length > 0;
+      default:
+        return false;
     }
   };
+
+  const totalCount = projects.length + servers.length + domains.length + databases.length + scripts.length;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="container">
       <header>
         <h1>pctrl</h1>
         <p>Mission Control for Self-Hosters & Indie Devs</p>
+        <div className="header-stats">
+          <span className="stat">{totalCount} resources</span>
+        </div>
       </header>
+
+      {legacyCounts && legacyCounts.total > 0 && (
+        <div className="legacy-warning">
+          <span>⚠️</span>
+          <span>
+            {legacyCounts.total} legacy entries found. Run <code>pctrl migrate</code> to migrate.
+          </span>
+        </div>
+      )}
 
       <nav className="tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            style={{ '--tab-color': tab.color } as React.CSSProperties}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -459,18 +656,17 @@ function App() {
       </nav>
 
       <main className="content">
-        {error && <div className="error-banner">{error}</div>}
+        {error && (
+          <div className="error-banner">
+            {error}
+            <button onClick={() => setError(null)}>×</button>
+          </div>
+        )}
 
         <div className="panel">
           <div className="panel-header">
             <div>
               <h2>{tabs.find((t) => t.id === activeTab)?.label}</h2>
-              <p className="panel-description">
-                {activeTab === 'ssh' && 'Manage your SSH connections to remote servers.'}
-                {activeTab === 'docker' && 'Monitor and manage Docker containers across hosts.'}
-                {activeTab === 'coolify' && 'Manage deployments on your Coolify instances.'}
-                {activeTab === 'git' && 'Create and manage Git releases for your repositories.'}
-              </p>
             </div>
             {hasItems() && (
               <button className="btn-primary" onClick={() => setShowForm(true)}>
@@ -483,6 +679,29 @@ function App() {
       </main>
 
       {showForm && renderForm()}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty State Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EmptyState({ tab, onAdd }: { tab: string; onAdd: () => void }) {
+  const messages: Record<string, string> = {
+    projects: 'No projects configured yet.',
+    servers: 'No servers configured yet.',
+    domains: 'No domains configured yet.',
+    databases: 'No databases configured yet.',
+    scripts: 'No scripts configured yet.',
+  };
+
+  return (
+    <div className="empty-state">
+      <p>{messages[tab]}</p>
+      <button className="btn-primary" onClick={onAdd}>
+        Add {tab.slice(0, -1)}
+      </button>
     </div>
   );
 }
