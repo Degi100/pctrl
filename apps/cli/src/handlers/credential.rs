@@ -62,6 +62,7 @@ pub async fn handle_list(db: &Database) -> anyhow::Result<()> {
 }
 
 /// Handle credential add command
+#[allow(clippy::too_many_arguments)]
 pub async fn handle_add(
     db: &Database,
     name: String,
@@ -82,9 +83,9 @@ pub async fn handle_add(
             let key_path = key.ok_or_else(|| anyhow::anyhow!("SSH credentials require --key"))?;
 
             // Expand ~ to home directory
-            let expanded_key_path = if key_path.starts_with("~/") {
+            let expanded_key_path = if let Some(stripped) = key_path.strip_prefix("~/") {
                 if let Some(home) = dirs::home_dir() {
-                    home.join(&key_path[2..]).to_string_lossy().to_string()
+                    home.join(stripped).to_string_lossy().to_string()
                 } else {
                     key_path
                 }
@@ -187,7 +188,7 @@ pub async fn handle_show(db: &Database, name: String) -> anyhow::Result<()> {
         CredentialData::SshAgent { username, port } => {
             println!("  {} {}", style::dim("Username:"), username);
             println!("  {} {}", style::dim("Port:"), port);
-            println!("  {} {}", style::dim("Auth:"), "SSH Agent");
+            println!("  {} SSH Agent", style::dim("Auth:"));
         }
         CredentialData::ApiToken { token, url } => {
             println!(
