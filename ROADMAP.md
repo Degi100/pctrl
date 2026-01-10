@@ -99,7 +99,38 @@
 
 ---
 
-## Phase 3: Auto-Discovery 🚧 [next]
+## Phase 3: Credentials & SSH 🚧 [current]
+
+**Goal:** Secure credential management and SSH integration
+
+### Credential System
+- ✅ Credential entity (SshKey, SshAgent, ApiToken, BasicAuth, OAuth)
+- ✅ CLI: `credential add/list/show/remove` commands
+- ✅ Desktop: Credentials tab with full CRUD
+- ✅ Desktop: SSH key generation (RSA-4096)
+- ✅ Desktop: Test connection feature
+- ✅ Desktop: Clipboard copy for public keys
+
+### SSH Integration
+- ✅ Server links to credentials
+- ✅ SSH Agent authentication (ED25519 support)
+- ✅ SSH Key authentication (RSA recommended)
+- ✅ CLI: `server status` - Live stats via SSH
+- ✅ CLI: `server exec` - Remote command execution
+- ✅ Desktop: Server status button
+- ✅ Auto-detect server specs on add (CPU, RAM, Disk)
+
+### UX Improvements
+- ✅ German tooltips and hints
+- ✅ Auto-fill defaults (username, port, key path)
+- ✅ File browser for SSH keys
+- ✅ Colored output and progress indicators
+
+**Target Release:** v0.3.0
+
+---
+
+## Phase 3.5: Auto-Discovery 📋 [next]
 
 **Goal:** Automatic detection and mapping of resources
 
@@ -119,11 +150,10 @@
 
 ### CLI/TUI Improvements
 - 📋 Interactive configuration wizard
-- ✅ Colored output and progress indicators
 - 📋 Shell completion scripts (bash, zsh, fish)
 - 📋 Configuration file validation
 
-**Target Release:** v0.3.0
+**Target Release:** v0.3.5
 
 ---
 
@@ -139,8 +169,8 @@
 - 📋 Health check indicators
 
 ### SSH Enhancements
+- ✅ SSH agent integration (moved from Phase 3)
 - 📋 Password authentication support
-- 📋 SSH agent integration
 - 📋 Connection history and favorites
 - 📋 Port forwarding management
 - 📋 SFTP file transfer

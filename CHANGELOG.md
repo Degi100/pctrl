@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Credential System**
+  - New Credential entity with types: SshKey, SshAgent, ApiToken, BasicAuth, OAuth
+  - Secure storage for SSH keys, API tokens, and passwords
+  - CLI commands: `credential add/list/show/remove`
+  - Desktop: Credentials tab with full CRUD
+
+- **SSH Integration**
+  - Servers can link to credentials for SSH access
+  - SSH Agent authentication support (recommended for ED25519 keys)
+  - CLI: `server status` - Live server stats (uptime, load, memory, disk)
+  - CLI: `server exec` - Run remote commands via SSH
+  - Desktop: Server status button with live SSH stats
+  - Desktop: Test connection feature for credentials
+
+- **SSH Key Generation**
+  - Desktop: "Generate Key" button creates RSA-4096 keys
+  - Auto-generates key in `~/.ssh/id_rsa_pctrl_<name>`
+  - One-click copy public key to clipboard
+  - Instructions for adding to server's authorized_keys
+
+- **UX Improvements**
+  - German tooltips and hints throughout desktop app
+  - Auto-fill defaults (username: root, port: 22, key path)
+  - File browser for selecting existing SSH keys
+  - Warning about ED25519 compatibility issues with libssh2
+
 - **TUI v6 Update**
   - Replaced legacy panels (SSH, Docker, Coolify, Git) with v6 entities
   - New panels: Projects, Servers, Domains, Databases, Scripts

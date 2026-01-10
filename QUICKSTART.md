@@ -87,11 +87,29 @@ pctrl project list
 pctrl project show my-app
 ```
 
+### Credentials (SSH Keys)
+
+Before adding servers, set up SSH credentials:
+
+```bash
+# Add SSH Agent credential (recommended - works with ED25519)
+pctrl credential add "My SSH" --type agent --user root
+
+# Add SSH Key credential (use RSA keys for best compatibility)
+pctrl credential add "My SSH" --type ssh --user root --key ~/.ssh/id_rsa
+
+# List credentials
+pctrl credential list
+
+# Show credential details
+pctrl credential show "My SSH"
+```
+
 ### Servers
 
 ```bash
-# Add a VPS
-pctrl server add "Production" 10.0.0.1 -t vps -p hetzner
+# Add a VPS with credential for SSH access
+pctrl server add "Production" 10.0.0.1 -t vps -p hetzner -c "My SSH"
 
 # Add a local server
 pctrl server add "Dev Machine" localhost -t local
@@ -101,6 +119,12 @@ pctrl server list
 
 # Show details
 pctrl server show production
+
+# Check server status via SSH (requires credential)
+pctrl server status production
+
+# Run remote command
+pctrl server exec production "docker ps"
 ```
 
 ### Domains
@@ -202,12 +226,23 @@ pctrl project link <project> <type> <id> [-r role]  # Link resource
 pctrl project unlink <project> <link-id>            # Unlink resource
 ```
 
+### Credential Commands
+
+```bash
+pctrl credential list               # List all credentials
+pctrl credential add <name> --type <ssh|agent> --user <username> [--key <path>] [--port 22]
+pctrl credential show <name>        # Show credential details
+pctrl credential remove <name>      # Remove a credential
+```
+
 ### Server Commands
 
 ```bash
 pctrl server list                   # List all servers
-pctrl server add <name> <host> [-t vps|dedicated|local|cloud] [-p provider]
+pctrl server add <name> <host> [-t vps|dedicated|local|cloud] [-p provider] [-c credential]
 pctrl server show <name>            # Show server details
+pctrl server status <name>          # Get live status via SSH
+pctrl server exec <name> <command>  # Run remote command
 pctrl server remove <name>          # Remove a server
 ```
 
