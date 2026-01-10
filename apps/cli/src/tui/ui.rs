@@ -62,26 +62,18 @@ fn render_main(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_sidebar(f: &mut Frame, app: &App, area: Rect) {
     let total_count = app.projects.len()
-        + app.config.ssh_connections.len()
-        + app.config.docker_hosts.len()
-        + app.config.coolify_instances.len()
-        + app.config.git_repos.len();
+        + app.servers.len()
+        + app.domains.len()
+        + app.databases.len()
+        + app.scripts.len();
 
     let menu_items: Vec<ListItem> = [
         ("Status", total_count, SelectedPanel::Status),
         ("Projects", app.projects.len(), SelectedPanel::Projects),
-        ("SSH", app.config.ssh_connections.len(), SelectedPanel::Ssh),
-        (
-            "Docker",
-            app.config.docker_hosts.len(),
-            SelectedPanel::Docker,
-        ),
-        (
-            "Coolify",
-            app.config.coolify_instances.len(),
-            SelectedPanel::Coolify,
-        ),
-        ("Git", app.config.git_repos.len(), SelectedPanel::Git),
+        ("Servers", app.servers.len(), SelectedPanel::Servers),
+        ("Domains", app.domains.len(), SelectedPanel::Domains),
+        ("Databases", app.databases.len(), SelectedPanel::Databases),
+        ("Scripts", app.scripts.len(), SelectedPanel::Scripts),
     ]
     .iter()
     .map(|(name, count, panel)| {
@@ -121,10 +113,10 @@ fn render_content(f: &mut Frame, app: &App, area: Rect) {
         match app.selected_panel {
             SelectedPanel::Status => render_status(app),
             SelectedPanel::Projects => render_projects(app),
-            SelectedPanel::Ssh => render_ssh(app),
-            SelectedPanel::Docker => render_docker(app),
-            SelectedPanel::Coolify => render_coolify(app),
-            SelectedPanel::Git => render_git(app),
+            SelectedPanel::Servers => render_servers(app),
+            SelectedPanel::Domains => render_domains(app),
+            SelectedPanel::Databases => render_databases(app),
+            SelectedPanel::Scripts => render_scripts(app),
         }
     }
     .block(
@@ -134,10 +126,10 @@ fn render_content(f: &mut Frame, app: &App, area: Rect) {
                 match app.selected_panel {
                     SelectedPanel::Status => "Status",
                     SelectedPanel::Projects => "Projects",
-                    SelectedPanel::Ssh => "SSH Connections",
-                    SelectedPanel::Docker => "Docker Hosts",
-                    SelectedPanel::Coolify => "Coolify Instances",
-                    SelectedPanel::Git => "Git Repositories",
+                    SelectedPanel::Servers => "Servers",
+                    SelectedPanel::Domains => "Domains",
+                    SelectedPanel::Databases => "Databases",
+                    SelectedPanel::Scripts => "Scripts",
                 }
             ))
             .borders(Borders::ALL)
@@ -155,10 +147,10 @@ fn render_form(app: &App) -> Paragraph<'static> {
                 "  Add New {}",
                 match app.selected_panel {
                     SelectedPanel::Projects => "Project",
-                    SelectedPanel::Ssh => "SSH Connection",
-                    SelectedPanel::Docker => "Docker Host",
-                    SelectedPanel::Coolify => "Coolify Instance",
-                    SelectedPanel::Git => "Git Repository",
+                    SelectedPanel::Servers => "Server",
+                    SelectedPanel::Domains => "Domain",
+                    SelectedPanel::Databases => "Database",
+                    SelectedPanel::Scripts => "Script",
                     SelectedPanel::Status => "",
                 }
             ),
@@ -207,17 +199,6 @@ fn render_form(app: &App) -> Paragraph<'static> {
 }
 
 fn render_status(app: &App) -> Paragraph<'static> {
-    let (ssh_online, ssh_offline, ssh_unknown) = app.count_by_status(&app.ssh_status);
-    let (docker_online, docker_offline, docker_unknown) = app.count_by_status(&app.docker_status);
-    let (coolify_online, coolify_offline, coolify_unknown) =
-        app.count_by_status(&app.coolify_status);
-    let (git_online, git_offline, git_unknown) = app.count_by_status(&app.git_status);
-
-    let ssh_total = ssh_online + ssh_offline + ssh_unknown;
-    let docker_total = docker_online + docker_offline + docker_unknown;
-    let coolify_total = coolify_online + coolify_offline + coolify_unknown;
-    let git_total = git_online + git_offline + git_unknown;
-
     let mut items: Vec<Line> = vec![
         Line::from(""),
         Line::from(Span::styled(
@@ -226,51 +207,62 @@ fn render_status(app: &App) -> Paragraph<'static> {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         )),
-        Line::from(Span::styled(
-            "  Press 'r' to refresh status",
-            Style::default().fg(Color::DarkGray),
-        )),
         Line::from(""),
     ];
 
-    items.push(build_status_line(
-        "SSH Connections",
-        "      ",
-        ssh_online,
-        ssh_offline,
-        ssh_unknown,
-    ));
-    items.push(build_status_line(
-        "Docker Hosts",
-        "         ",
-        docker_online,
-        docker_offline,
-        docker_unknown,
-    ));
-    items.push(build_status_line(
-        "Coolify Instances",
-        "    ",
-        coolify_online,
-        coolify_offline,
-        coolify_unknown,
-    ));
-    items.push(build_status_line(
-        "Git Repositories",
-        "     ",
-        git_online,
-        git_offline,
-        git_unknown,
-    ));
+    // Resource counts
+    items.push(Line::from(vec![
+        Span::styled("  ● ", Style::default().fg(Color::Cyan)),
+        Span::styled("Projects", Style::default().fg(Color::White)),
+        Span::styled(
+            format!("         {}", app.projects.len()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    items.push(Line::from(vec![
+        Span::styled("  ● ", Style::default().fg(Color::Green)),
+        Span::styled("Servers", Style::default().fg(Color::White)),
+        Span::styled(
+            format!("          {}", app.servers.len()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    items.push(Line::from(vec![
+        Span::styled("  ● ", Style::default().fg(Color::Blue)),
+        Span::styled("Domains", Style::default().fg(Color::White)),
+        Span::styled(
+            format!("          {}", app.domains.len()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    items.push(Line::from(vec![
+        Span::styled("  ● ", Style::default().fg(Color::Magenta)),
+        Span::styled("Databases", Style::default().fg(Color::White)),
+        Span::styled(
+            format!("        {}", app.databases.len()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+    items.push(Line::from(vec![
+        Span::styled("  ● ", Style::default().fg(Color::Yellow)),
+        Span::styled("Scripts", Style::default().fg(Color::White)),
+        Span::styled(
+            format!("          {}", app.scripts.len()),
+            Style::default().fg(Color::DarkGray),
+        ),
+    ]));
+
+    let total = app.projects.len()
+        + app.servers.len()
+        + app.domains.len()
+        + app.databases.len()
+        + app.scripts.len();
 
     items.push(Line::from(""));
     items.push(Line::from(Span::styled(
         "  ─────────────────────────────",
         Style::default().fg(Color::DarkGray),
     )));
-
-    let total = ssh_total + docker_total + coolify_total + git_total;
-    let total_online = ssh_online + docker_online + coolify_online + git_online;
-    let total_offline = ssh_offline + docker_offline + coolify_offline + git_offline;
 
     if total == 0 {
         items.push(Line::from(""));
@@ -279,123 +271,39 @@ fn render_status(app: &App) -> Paragraph<'static> {
             Style::default().fg(Color::DarkGray),
         )));
         items.push(Line::from(Span::styled(
-            "  Use ↓ to navigate and add resources.",
+            "  Use ↓ to navigate and 'a' to add resources.",
             Style::default().fg(Color::Yellow),
         )));
     } else {
         items.push(Line::from(""));
         items.push(Line::from(vec![
-            Span::styled("  ● ", Style::default().fg(Color::Green)),
-            Span::styled("Online", Style::default().fg(Color::DarkGray)),
-            Span::styled("  ● ", Style::default().fg(Color::Red)),
-            Span::styled("Offline", Style::default().fg(Color::DarkGray)),
-            Span::styled("  ● ", Style::default().fg(Color::Yellow)),
-            Span::styled("Unknown", Style::default().fg(Color::DarkGray)),
-        ]));
-        items.push(Line::from(""));
-        items.push(Line::from(vec![
             Span::styled("  Total: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!("{}", total_online),
-                Style::default().fg(Color::Green),
-            ),
-            Span::styled(" online, ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!("{}", total_offline),
-                Style::default().fg(Color::Red),
-            ),
-            Span::styled(" offline", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("{}", total), Style::default().fg(Color::Cyan)),
+            Span::styled(" resources", Style::default().fg(Color::DarkGray)),
         ]));
+    }
+
+    // Legacy migration warning
+    let legacy_count = app.total_legacy_count();
+    if legacy_count > 0 {
+        items.push(Line::from(""));
+        items.push(Line::from(Span::styled(
+            "  ⚠ Legacy Data Warning",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )));
+        items.push(Line::from(Span::styled(
+            format!("  {} legacy entries found.", legacy_count),
+            Style::default().fg(Color::Yellow),
+        )));
+        items.push(Line::from(Span::styled(
+            "  Run: pctrl migrate",
+            Style::default().fg(Color::Yellow),
+        )));
     }
 
     Paragraph::new(items)
-}
-
-fn build_status_line(
-    name: &str,
-    padding: &str,
-    online: usize,
-    offline: usize,
-    unknown: usize,
-) -> Line<'static> {
-    let total = online + offline + unknown;
-    if total == 0 {
-        return Line::from(vec![
-            Span::styled("  ○ ", Style::default().fg(Color::DarkGray)),
-            Span::styled(name.to_string(), Style::default().fg(Color::White)),
-            Span::styled(
-                format!("{}{}", padding, 0),
-                Style::default().fg(Color::DarkGray),
-            ),
-        ]);
-    }
-
-    let mut spans = vec![Span::raw("  ")];
-
-    if online > 0 {
-        spans.push(Span::styled("●", Style::default().fg(Color::Green)));
-    }
-    if offline > 0 {
-        spans.push(Span::styled("●", Style::default().fg(Color::Red)));
-    }
-    if unknown > 0 && online == 0 && offline == 0 {
-        spans.push(Span::styled("●", Style::default().fg(Color::Yellow)));
-    }
-    spans.push(Span::raw(" "));
-
-    spans.push(Span::styled(
-        name.to_string(),
-        Style::default().fg(Color::White),
-    ));
-
-    let mut count_parts = Vec::new();
-    if online > 0 {
-        count_parts.push(format!("{} online", online));
-    }
-    if offline > 0 {
-        count_parts.push(format!("{} offline", offline));
-    }
-    if unknown > 0 {
-        count_parts.push(format!("{} ?", unknown));
-    }
-
-    spans.push(Span::styled(
-        format!(
-            "{}  ",
-            padding
-                .chars()
-                .take(padding.len().saturating_sub(count_parts.join(", ").len()))
-                .collect::<String>()
-        ),
-        Style::default().fg(Color::DarkGray),
-    ));
-
-    if online > 0 {
-        spans.push(Span::styled(
-            format!("{}", online),
-            Style::default().fg(Color::Green),
-        ));
-        if offline > 0 || unknown > 0 {
-            spans.push(Span::styled("/", Style::default().fg(Color::DarkGray)));
-        }
-    }
-    if offline > 0 {
-        spans.push(Span::styled(
-            format!("{}", offline),
-            Style::default().fg(Color::Red),
-        ));
-        if unknown > 0 {
-            spans.push(Span::styled("/", Style::default().fg(Color::DarkGray)));
-        }
-    }
-    if unknown > 0 {
-        spans.push(Span::styled(
-            format!("{}", unknown),
-            Style::default().fg(Color::Yellow),
-        ));
-    }
-
-    Line::from(spans)
 }
 
 fn render_projects(app: &App) -> Paragraph<'static> {
@@ -446,31 +354,113 @@ fn render_projects(app: &App) -> Paragraph<'static> {
     Paragraph::new(items)
 }
 
-fn render_ssh(app: &App) -> Paragraph<'static> {
-    let items: Vec<Line> = if app.config.ssh_connections.is_empty() {
+fn render_servers(app: &App) -> Paragraph<'static> {
+    let items: Vec<Line> = if app.servers.is_empty() {
         vec![
             Line::from(""),
             Line::from(Span::styled(
-                "  No SSH connections configured",
+                "  No servers configured",
                 Style::default().fg(Color::DarkGray),
             )),
             Line::from(""),
             Line::from(Span::styled(
-                "  Add with: pctrl ssh add <name> <host> <user>",
+                "  Press 'a' to add a server, or use:",
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(Span::styled(
+                "  pctrl server add <name> <host>",
                 Style::default().fg(Color::Yellow),
             )),
         ]
     } else {
-        app.config
-            .ssh_connections
+        app.servers
             .iter()
-            .map(|conn| {
+            .map(|server| {
+                let type_str = format!(" [{}]", server.server_type);
                 Line::from(vec![
                     Span::styled("  ● ", Style::default().fg(Color::Green)),
-                    Span::styled(conn.name.clone(), Style::default().fg(Color::Cyan)),
+                    Span::styled(server.name.clone(), Style::default().fg(Color::Cyan)),
+                    Span::raw(" - "),
+                    Span::styled(server.host.clone(), Style::default().fg(Color::White)),
+                    Span::styled(type_str, Style::default().fg(Color::DarkGray)),
+                ])
+            })
+            .collect()
+    };
+    Paragraph::new(items)
+}
+
+fn render_domains(app: &App) -> Paragraph<'static> {
+    let items: Vec<Line> = if app.domains.is_empty() {
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  No domains configured",
+                Style::default().fg(Color::DarkGray),
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "  Press 'a' to add a domain, or use:",
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(Span::styled(
+                "  pctrl domain add <domain>",
+                Style::default().fg(Color::Yellow),
+            )),
+        ]
+    } else {
+        app.domains
+            .iter()
+            .map(|domain| {
+                let ssl_icon = if domain.ssl { "🔒" } else { "🔓" };
+                let type_str = format!(" ({})", domain.domain_type);
+                Line::from(vec![
+                    Span::styled("  ", Style::default()),
+                    Span::raw(ssl_icon),
+                    Span::raw(" "),
+                    Span::styled(domain.domain.clone(), Style::default().fg(Color::Blue)),
+                    Span::styled(type_str, Style::default().fg(Color::DarkGray)),
+                ])
+            })
+            .collect()
+    };
+    Paragraph::new(items)
+}
+
+fn render_databases(app: &App) -> Paragraph<'static> {
+    let items: Vec<Line> = if app.databases.is_empty() {
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  No databases configured",
+                Style::default().fg(Color::DarkGray),
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "  Press 'a' to add a database, or use:",
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(Span::styled(
+                "  pctrl db add <name> <type> <host>",
+                Style::default().fg(Color::Yellow),
+            )),
+        ]
+    } else {
+        app.databases
+            .iter()
+            .map(|db| {
+                let host_str = db.host.as_deref().unwrap_or("localhost");
+                let port_str = db.port.map(|p| format!(":{}", p)).unwrap_or_default();
+                Line::from(vec![
+                    Span::styled("  ● ", Style::default().fg(Color::Magenta)),
+                    Span::styled(db.name.clone(), Style::default().fg(Color::Cyan)),
+                    Span::styled(
+                        format!(" [{}]", db.db_type),
+                        Style::default().fg(Color::Magenta),
+                    ),
                     Span::raw(" - "),
                     Span::styled(
-                        format!("{}@{}:{}", conn.username, conn.host, conn.port),
+                        format!("{}{}", host_str, port_str),
                         Style::default().fg(Color::White),
                     ),
                 ])
@@ -480,92 +470,41 @@ fn render_ssh(app: &App) -> Paragraph<'static> {
     Paragraph::new(items)
 }
 
-fn render_docker(app: &App) -> Paragraph<'static> {
-    let items: Vec<Line> = if app.config.docker_hosts.is_empty() {
+fn render_scripts(app: &App) -> Paragraph<'static> {
+    let items: Vec<Line> = if app.scripts.is_empty() {
         vec![
             Line::from(""),
             Line::from(Span::styled(
-                "  No Docker hosts configured",
+                "  No scripts configured",
                 Style::default().fg(Color::DarkGray),
             )),
             Line::from(""),
             Line::from(Span::styled(
-                "  Add with: pctrl docker add <name> <url>",
+                "  Press 'a' to add a script, or use:",
+                Style::default().fg(Color::Yellow),
+            )),
+            Line::from(Span::styled(
+                "  pctrl script add <name> <command>",
                 Style::default().fg(Color::Yellow),
             )),
         ]
     } else {
-        app.config
-            .docker_hosts
+        app.scripts
             .iter()
-            .map(|host| {
-                Line::from(vec![
-                    Span::styled("  ● ", Style::default().fg(Color::Blue)),
-                    Span::styled(host.name.clone(), Style::default().fg(Color::Cyan)),
-                    Span::raw(" - "),
-                    Span::styled(host.url.clone(), Style::default().fg(Color::White)),
-                ])
-            })
-            .collect()
-    };
-    Paragraph::new(items)
-}
-
-fn render_coolify(app: &App) -> Paragraph<'static> {
-    let items: Vec<Line> = if app.config.coolify_instances.is_empty() {
-        vec![
-            Line::from(""),
-            Line::from(Span::styled(
-                "  No Coolify instances configured",
-                Style::default().fg(Color::DarkGray),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                "  Add with: pctrl coolify add <name> <url> <token>",
-                Style::default().fg(Color::Yellow),
-            )),
-        ]
-    } else {
-        app.config
-            .coolify_instances
-            .iter()
-            .map(|instance| {
-                Line::from(vec![
-                    Span::styled("  ● ", Style::default().fg(Color::Magenta)),
-                    Span::styled(instance.name.clone(), Style::default().fg(Color::Cyan)),
-                    Span::raw(" - "),
-                    Span::styled(instance.url.clone(), Style::default().fg(Color::White)),
-                ])
-            })
-            .collect()
-    };
-    Paragraph::new(items)
-}
-
-fn render_git(app: &App) -> Paragraph<'static> {
-    let items: Vec<Line> = if app.config.git_repos.is_empty() {
-        vec![
-            Line::from(""),
-            Line::from(Span::styled(
-                "  No Git repositories configured",
-                Style::default().fg(Color::DarkGray),
-            )),
-            Line::from(""),
-            Line::from(Span::styled(
-                "  Add with: pctrl git add <name> <path>",
-                Style::default().fg(Color::Yellow),
-            )),
-        ]
-    } else {
-        app.config
-            .git_repos
-            .iter()
-            .map(|repo| {
+            .map(|script| {
+                let type_str = format!(" [{}]", script.script_type);
+                let cmd_preview: String = script.command.chars().take(40).collect();
+                let cmd_display = if script.command.len() > 40 {
+                    format!("{}...", cmd_preview)
+                } else {
+                    cmd_preview
+                };
                 Line::from(vec![
                     Span::styled("  ● ", Style::default().fg(Color::Yellow)),
-                    Span::styled(repo.name.clone(), Style::default().fg(Color::Cyan)),
+                    Span::styled(script.name.clone(), Style::default().fg(Color::Cyan)),
+                    Span::styled(type_str, Style::default().fg(Color::Yellow)),
                     Span::raw(" - "),
-                    Span::styled(repo.path.clone(), Style::default().fg(Color::White)),
+                    Span::styled(cmd_display, Style::default().fg(Color::DarkGray)),
                 ])
             })
             .collect()

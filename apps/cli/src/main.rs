@@ -559,7 +559,7 @@ async fn main() -> anyhow::Result<()> {
                 println!();
             }
             Mode::Tui => {
-                tui::run(config.clone(), db.clone()).await?;
+                tui::run(db.clone()).await?;
             }
             Mode::Gui => {
                 println!("GUI mode requires the desktop application (Tauri)");

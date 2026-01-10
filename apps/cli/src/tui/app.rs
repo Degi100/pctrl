@@ -1,69 +1,86 @@
 //! TUI application state
 
-use super::checks::{check_coolify_connections, check_docker_connections, check_ssh_connections};
-use super::types::{ConnectionStatus, InputForm, InputMode, SelectedPanel};
-use pctrl_core::{Config, Project};
+use super::types::{InputForm, InputMode, SelectedPanel};
+use pctrl_core::{DatabaseCredentials, Domain, Project, Script, Server};
 use pctrl_database::Database;
-use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Arc;
 
 pub struct App {
     pub selected_panel: SelectedPanel,
-    pub config: Arc<Config>,
     pub db: Arc<Database>,
+    // v6 entities
     pub projects: Vec<Project>,
-    pub ssh_status: HashMap<String, ConnectionStatus>,
-    pub docker_status: HashMap<String, ConnectionStatus>,
-    pub coolify_status: HashMap<String, ConnectionStatus>,
-    pub git_status: HashMap<String, ConnectionStatus>,
+    pub servers: Vec<Server>,
+    pub domains: Vec<Domain>,
+    pub databases: Vec<DatabaseCredentials>,
+    pub scripts: Vec<Script>,
+    // Legacy counts (for migration warning)
+    pub legacy_ssh_count: usize,
+    pub legacy_docker_count: usize,
+    pub legacy_coolify_count: usize,
+    pub legacy_git_count: usize,
+    // UI state
     pub input_mode: InputMode,
     pub input_form: InputForm,
-    pub checking_connections: bool,
+    pub loading: bool,
 }
 
 impl App {
-    pub fn new(config: Arc<Config>, db: Arc<Database>) -> Self {
-        let ssh_status: HashMap<String, ConnectionStatus> = config
-            .ssh_connections
-            .iter()
-            .map(|c| (c.id.clone(), ConnectionStatus::Unknown))
-            .collect();
-        let docker_status: HashMap<String, ConnectionStatus> = config
-            .docker_hosts
-            .iter()
-            .map(|h| (h.id.clone(), ConnectionStatus::Unknown))
-            .collect();
-        let coolify_status: HashMap<String, ConnectionStatus> = config
-            .coolify_instances
-            .iter()
-            .map(|i| (i.id.clone(), ConnectionStatus::Unknown))
-            .collect();
-        let git_status: HashMap<String, ConnectionStatus> = config
-            .git_repos
-            .iter()
-            .map(|r| (r.id.clone(), ConnectionStatus::Unknown))
-            .collect();
-
+    pub fn new(db: Arc<Database>) -> Self {
         Self {
             selected_panel: SelectedPanel::Status,
-            config,
             db,
             projects: Vec::new(),
-            ssh_status,
-            docker_status,
-            coolify_status,
-            git_status,
+            servers: Vec::new(),
+            domains: Vec::new(),
+            databases: Vec::new(),
+            scripts: Vec::new(),
+            legacy_ssh_count: 0,
+            legacy_docker_count: 0,
+            legacy_coolify_count: 0,
+            legacy_git_count: 0,
             input_mode: InputMode::Normal,
             input_form: InputForm::default(),
-            checking_connections: false,
+            loading: false,
         }
     }
 
-    pub async fn load_projects(&mut self) {
+    pub async fn load_all(&mut self) {
+        self.loading = true;
+
+        // Load v6 entities
         if let Ok(projects) = self.db.list_projects().await {
             self.projects = projects;
         }
+        if let Ok(servers) = self.db.list_servers().await {
+            self.servers = servers;
+        }
+        if let Ok(domains) = self.db.list_domains().await {
+            self.domains = domains;
+        }
+        if let Ok(databases) = self.db.list_database_credentials().await {
+            self.databases = databases;
+        }
+        if let Ok(scripts) = self.db.list_scripts().await {
+            self.scripts = scripts;
+        }
+
+        // Load legacy counts for migration warning
+        if let Ok(config) = self.db.load_config().await {
+            self.legacy_ssh_count = config.ssh_connections.len();
+            self.legacy_docker_count = config.docker_hosts.len();
+            self.legacy_coolify_count = config.coolify_instances.len();
+            self.legacy_git_count = config.git_repos.len();
+        }
+
+        self.loading = false;
+    }
+
+    pub fn total_legacy_count(&self) -> usize {
+        self.legacy_ssh_count
+            + self.legacy_docker_count
+            + self.legacy_coolify_count
+            + self.legacy_git_count
     }
 
     pub fn get_form_fields(&self) -> Vec<(&'static str, &str)> {
@@ -74,24 +91,27 @@ impl App {
                 ("Stack", &self.input_form.stack),
                 ("Status", &self.input_form.status),
             ],
-            SelectedPanel::Ssh => vec![
+            SelectedPanel::Servers => vec![
                 ("Name", &self.input_form.name),
                 ("Host", &self.input_form.host),
-                ("User", &self.input_form.user),
+                ("Type", &self.input_form.server_type),
+                ("Provider", &self.input_form.provider),
+            ],
+            SelectedPanel::Domains => vec![
+                ("Domain", &self.input_form.domain),
+                ("Type", &self.input_form.domain_type),
+                ("SSL", &self.input_form.ssl),
+            ],
+            SelectedPanel::Databases => vec![
+                ("Name", &self.input_form.name),
+                ("Type", &self.input_form.db_type),
+                ("Host", &self.input_form.host),
                 ("Port", &self.input_form.port),
             ],
-            SelectedPanel::Docker => vec![
+            SelectedPanel::Scripts => vec![
                 ("Name", &self.input_form.name),
-                ("URL", &self.input_form.url),
-            ],
-            SelectedPanel::Coolify => vec![
-                ("Name", &self.input_form.name),
-                ("URL", &self.input_form.url),
-                ("Token", &self.input_form.token),
-            ],
-            SelectedPanel::Git => vec![
-                ("Name", &self.input_form.name),
-                ("Path", &self.input_form.path),
+                ("Command", &self.input_form.command),
+                ("Type", &self.input_form.script_type),
             ],
             SelectedPanel::Status => vec![],
         }
@@ -107,27 +127,30 @@ impl App {
                 3 => Some(&mut self.input_form.status),
                 _ => None,
             },
-            SelectedPanel::Ssh => match field_idx {
+            SelectedPanel::Servers => match field_idx {
                 0 => Some(&mut self.input_form.name),
                 1 => Some(&mut self.input_form.host),
-                2 => Some(&mut self.input_form.user),
+                2 => Some(&mut self.input_form.server_type),
+                3 => Some(&mut self.input_form.provider),
+                _ => None,
+            },
+            SelectedPanel::Domains => match field_idx {
+                0 => Some(&mut self.input_form.domain),
+                1 => Some(&mut self.input_form.domain_type),
+                2 => Some(&mut self.input_form.ssl),
+                _ => None,
+            },
+            SelectedPanel::Databases => match field_idx {
+                0 => Some(&mut self.input_form.name),
+                1 => Some(&mut self.input_form.db_type),
+                2 => Some(&mut self.input_form.host),
                 3 => Some(&mut self.input_form.port),
                 _ => None,
             },
-            SelectedPanel::Docker => match field_idx {
+            SelectedPanel::Scripts => match field_idx {
                 0 => Some(&mut self.input_form.name),
-                1 => Some(&mut self.input_form.url),
-                _ => None,
-            },
-            SelectedPanel::Coolify => match field_idx {
-                0 => Some(&mut self.input_form.name),
-                1 => Some(&mut self.input_form.url),
-                2 => Some(&mut self.input_form.token),
-                _ => None,
-            },
-            SelectedPanel::Git => match field_idx {
-                0 => Some(&mut self.input_form.name),
-                1 => Some(&mut self.input_form.path),
+                1 => Some(&mut self.input_form.command),
+                2 => Some(&mut self.input_form.script_type),
                 _ => None,
             },
             SelectedPanel::Status => None,
@@ -137,10 +160,10 @@ impl App {
     pub fn field_count(&self) -> usize {
         match self.selected_panel {
             SelectedPanel::Projects => 4,
-            SelectedPanel::Ssh => 4,
-            SelectedPanel::Docker => 2,
-            SelectedPanel::Coolify => 3,
-            SelectedPanel::Git => 2,
+            SelectedPanel::Servers => 4,
+            SelectedPanel::Domains => 3,
+            SelectedPanel::Databases => 4,
+            SelectedPanel::Scripts => 3,
             SelectedPanel::Status => 0,
         }
     }
@@ -151,69 +174,21 @@ impl App {
             SelectedPanel::Projects => {
                 self.input_form.status = "dev".to_string();
             }
-            SelectedPanel::Ssh => {
-                self.input_form.port = "22".to_string();
+            SelectedPanel::Servers => {
+                self.input_form.server_type = "vps".to_string();
             }
-            SelectedPanel::Docker => {
-                self.input_form.url = "unix:///var/run/docker.sock".to_string();
+            SelectedPanel::Domains => {
+                self.input_form.domain_type = "production".to_string();
+                self.input_form.ssl = "true".to_string();
+            }
+            SelectedPanel::Databases => {
+                self.input_form.db_type = "postgres".to_string();
+                self.input_form.port = "5432".to_string();
+            }
+            SelectedPanel::Scripts => {
+                self.input_form.script_type = "local".to_string();
             }
             _ => {}
         }
-    }
-
-    pub async fn check_all_connections(&mut self) {
-        self.checking_connections = true;
-
-        // Git repos (path check)
-        for repo in &self.config.git_repos {
-            let status = if Path::new(&repo.path).exists() {
-                ConnectionStatus::Online
-            } else {
-                ConnectionStatus::Offline
-            };
-            self.git_status.insert(repo.id.clone(), status);
-        }
-
-        // SSH connections
-        let ssh_connections = self.config.ssh_connections.clone();
-        let ssh_results = check_ssh_connections(ssh_connections).await;
-        for (id, status) in ssh_results {
-            self.ssh_status.insert(id, status);
-        }
-
-        // Docker hosts
-        let docker_hosts = self.config.docker_hosts.clone();
-        let docker_results = check_docker_connections(docker_hosts).await;
-        for (id, status) in docker_results {
-            self.docker_status.insert(id, status);
-        }
-
-        // Coolify instances
-        let coolify_instances = self.config.coolify_instances.clone();
-        let coolify_results = check_coolify_connections(coolify_instances).await;
-        for (id, status) in coolify_results {
-            self.coolify_status.insert(id, status);
-        }
-
-        self.checking_connections = false;
-    }
-
-    pub fn count_by_status(
-        &self,
-        statuses: &HashMap<String, ConnectionStatus>,
-    ) -> (usize, usize, usize) {
-        let online = statuses
-            .values()
-            .filter(|s| **s == ConnectionStatus::Online)
-            .count();
-        let offline = statuses
-            .values()
-            .filter(|s| **s == ConnectionStatus::Offline)
-            .count();
-        let unknown = statuses
-            .values()
-            .filter(|s| **s == ConnectionStatus::Unknown)
-            .count();
-        (online, offline, unknown)
     }
 }

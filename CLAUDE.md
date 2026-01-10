@@ -26,7 +26,7 @@ cargo check
 ### File Locations
 - CLI commands: `apps/cli/src/main.rs`
 - Command handlers: `apps/cli/src/cli.rs`
-- TUI interface: `apps/cli/src/tui.rs`
+- TUI interface: `apps/cli/src/tui/` (mod.rs, app.rs, ui.rs, input.rs, types.rs)
 - Core types: `crates/core/src/lib.rs`
 - Database CRUD: `crates/database/src/lib.rs`
 
@@ -83,11 +83,11 @@ This project follows a **project-centric architecture** (MASTERPLAN v6):
 ## Common Commands
 
 ```bash
-# Run CLI
+# Run TUI (default mode)
 cargo run --package pctrl-cli
 
-# Run TUI
-cargo run --package pctrl-cli -- tui
+# Run CLI mode (status display)
+cargo run --package pctrl-cli -- -m cli
 
 # Run specific command
 cargo run --package pctrl-cli -- project list

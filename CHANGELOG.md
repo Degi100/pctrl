@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **TUI v6 Update**
+  - Replaced legacy panels (SSH, Docker, Coolify, Git) with v6 entities
+  - New panels: Projects, Servers, Domains, Databases, Scripts
+  - Add forms for all v6 entity types
+  - Legacy migration warning in Status panel
+  - Removed legacy connection health checks
+
 - **Database Schema Migrations**
   - Automatic schema versioning in metadata table
   - Auto-migration on database startup
@@ -36,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - All legacy commands will be removed in v0.4.0
 
 ### Planned
-- TUI detail views and interactive actions
+- TUI detail views and item selection
+- TUI edit/delete functionality
 - Desktop GUI functionality
 - Real-time container monitoring
 - SSH password authentication
