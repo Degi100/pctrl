@@ -291,14 +291,14 @@ const headers = {
 };
 
 async function upsertPhase(phase: Phase): Promise<'created' | 'updated' | 'error'> {
-  const check = await fetch(`${API_URL}/roadmap/${phase.phaseId}`);
+  const check = await fetch(`${API_URL}/api/roadmap/${phase.phaseId}`);
   if (check.ok) {
-    const res = await fetch(`${API_URL}/roadmap/${phase.phaseId}`, {
+    const res = await fetch(`${API_URL}/api/roadmap/${phase.phaseId}`, {
       method: 'PUT', headers, body: JSON.stringify(phase)
     });
     return res.ok ? 'updated' : 'error';
   } else {
-    const res = await fetch(`${API_URL}/roadmap`, {
+    const res = await fetch(`${API_URL}/api/roadmap`, {
       method: 'POST', headers, body: JSON.stringify(phase)
     });
     return res.ok ? 'created' : 'error';
@@ -306,14 +306,14 @@ async function upsertPhase(phase: Phase): Promise<'created' | 'updated' | 'error
 }
 
 async function upsertChangelog(entry: ChangelogEntry): Promise<'created' | 'updated' | 'error'> {
-  const check = await fetch(`${API_URL}/changelog/${encodeURIComponent(entry.version)}`);
+  const check = await fetch(`${API_URL}/api/changelog/${encodeURIComponent(entry.version)}`);
   if (check.ok) {
-    const res = await fetch(`${API_URL}/changelog/${encodeURIComponent(entry.version)}`, {
+    const res = await fetch(`${API_URL}/api/changelog/${encodeURIComponent(entry.version)}`, {
       method: 'PUT', headers, body: JSON.stringify(entry)
     });
     return res.ok ? 'updated' : 'error';
   } else {
-    const res = await fetch(`${API_URL}/changelog`, {
+    const res = await fetch(`${API_URL}/api/changelog`, {
       method: 'POST', headers, body: JSON.stringify(entry)
     });
     return res.ok ? 'created' : 'error';
@@ -321,14 +321,14 @@ async function upsertChangelog(entry: ChangelogEntry): Promise<'created' | 'upda
 }
 
 async function upsertDoc(doc: Doc): Promise<'created' | 'updated' | 'error'> {
-  const check = await fetch(`${API_URL}/docs/${doc.slug}`);
+  const check = await fetch(`${API_URL}/api/docs/${doc.slug}`);
   if (check.ok) {
-    const res = await fetch(`${API_URL}/docs/${doc.slug}`, {
+    const res = await fetch(`${API_URL}/api/docs/${doc.slug}`, {
       method: 'PUT', headers, body: JSON.stringify(doc)
     });
     return res.ok ? 'updated' : 'error';
   } else {
-    const res = await fetch(`${API_URL}/docs`, {
+    const res = await fetch(`${API_URL}/api/docs`, {
       method: 'POST', headers, body: JSON.stringify(doc)
     });
     return res.ok ? 'created' : 'error';

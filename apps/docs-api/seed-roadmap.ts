@@ -184,11 +184,11 @@ async function upsertPhase(phase: Phase): Promise<'created' | 'updated' | 'error
   };
 
   // Check if phase exists
-  const checkResponse = await fetch(`${API_URL}/roadmap/${phase.phaseId}`);
+  const checkResponse = await fetch(`${API_URL}/api/roadmap/${phase.phaseId}`);
 
   if (checkResponse.ok) {
     // Phase exists - update it
-    const updateResponse = await fetch(`${API_URL}/roadmap/${phase.phaseId}`, {
+    const updateResponse = await fetch(`${API_URL}/api/roadmap/${phase.phaseId}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(phase)
@@ -196,7 +196,7 @@ async function upsertPhase(phase: Phase): Promise<'created' | 'updated' | 'error
     return updateResponse.ok ? 'updated' : 'error';
   } else {
     // Phase doesn't exist - create it
-    const createResponse = await fetch(`${API_URL}/roadmap`, {
+    const createResponse = await fetch(`${API_URL}/api/roadmap`, {
       method: 'POST',
       headers,
       body: JSON.stringify(phase)
@@ -251,7 +251,7 @@ async function seedRoadmap() {
 
   // Fetch stats
   try {
-    const statsResponse = await fetch(`${API_URL}/roadmap`);
+    const statsResponse = await fetch(`${API_URL}/api/roadmap`);
     if (statsResponse.ok) {
       const data = await statsResponse.json();
       console.log(`Total phases: ${data.stats.phaseCount}`);

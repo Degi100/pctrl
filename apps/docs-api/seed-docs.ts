@@ -114,11 +114,11 @@ async function upsertDoc(doc: Doc): Promise<'created' | 'updated' | 'error'> {
   };
 
   // Check if doc exists
-  const checkResponse = await fetch(`${API_URL}/docs/${doc.slug}`);
+  const checkResponse = await fetch(`${API_URL}/api/docs/${doc.slug}`);
 
   if (checkResponse.ok) {
     // Doc exists - update it
-    const updateResponse = await fetch(`${API_URL}/docs/${doc.slug}`, {
+    const updateResponse = await fetch(`${API_URL}/api/docs/${doc.slug}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(doc)
@@ -126,7 +126,7 @@ async function upsertDoc(doc: Doc): Promise<'created' | 'updated' | 'error'> {
     return updateResponse.ok ? 'updated' : 'error';
   } else {
     // Doc doesn't exist - create it
-    const createResponse = await fetch(`${API_URL}/docs`, {
+    const createResponse = await fetch(`${API_URL}/api/docs`, {
       method: 'POST',
       headers,
       body: JSON.stringify(doc)
@@ -177,13 +177,13 @@ async function seedDocs() {
 
   // Fetch summary
   try {
-    const listResponse = await fetch(`${API_URL}/docs`);
+    const listResponse = await fetch(`${API_URL}/api/docs`);
     if (listResponse.ok) {
       const { docs: allDocs } = await listResponse.json();
       console.log(`Total docs in database: ${allDocs.length}`);
     }
 
-    const catResponse = await fetch(`${API_URL}/docs/categories`);
+    const catResponse = await fetch(`${API_URL}/api/docs/categories`);
     if (catResponse.ok) {
       const { categories } = await catResponse.json();
       console.log(`Categories: ${categories.join(', ')}`);

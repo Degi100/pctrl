@@ -51,7 +51,7 @@ interface RoadmapResponse {
  */
 export async function parseRoadmap(): Promise<Phase[]> {
   try {
-    const response = await fetch(`${API_URL}/roadmap`);
+    const response = await fetch(`${API_URL}/api/roadmap`);
     if (!response.ok) {
       console.warn(`Roadmap API error: ${response.status}, using fallback`);
       return getFallbackPhases();

@@ -36,7 +36,7 @@ export interface ChangelogResult {
  */
 export async function parseChangelog(): Promise<ChangelogResult> {
   try {
-    const response = await fetch(`${API_URL}/changelog`);
+    const response = await fetch(`${API_URL}/api/changelog`);
     if (!response.ok) {
       console.warn(`Changelog API error: ${response.status}, using fallback`);
       return { entries: getFallbackChangelog(), source: 'fallback' };
@@ -55,7 +55,7 @@ export async function parseChangelog(): Promise<ChangelogResult> {
  */
 export async function getLatestVersion(): Promise<ChangelogEntry | null> {
   try {
-    const response = await fetch(`${API_URL}/changelog/latest`);
+    const response = await fetch(`${API_URL}/api/changelog/latest`);
     if (!response.ok) {
       return null;
     }

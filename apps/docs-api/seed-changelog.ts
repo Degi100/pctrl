@@ -127,11 +127,11 @@ async function upsertEntry(entry: ChangelogEntry): Promise<'created' | 'updated'
   };
 
   // Check if version exists
-  const checkResponse = await fetch(`${API_URL}/changelog/${encodeURIComponent(entry.version)}`);
+  const checkResponse = await fetch(`${API_URL}/api/changelog/${encodeURIComponent(entry.version)}`);
 
   if (checkResponse.ok) {
     // Entry exists - update it
-    const updateResponse = await fetch(`${API_URL}/changelog/${encodeURIComponent(entry.version)}`, {
+    const updateResponse = await fetch(`${API_URL}/api/changelog/${encodeURIComponent(entry.version)}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify(entry)
@@ -139,7 +139,7 @@ async function upsertEntry(entry: ChangelogEntry): Promise<'created' | 'updated'
     return updateResponse.ok ? 'updated' : 'error';
   } else {
     // Entry doesn't exist - create it
-    const createResponse = await fetch(`${API_URL}/changelog`, {
+    const createResponse = await fetch(`${API_URL}/api/changelog`, {
       method: 'POST',
       headers,
       body: JSON.stringify(entry)
@@ -195,7 +195,7 @@ async function seedChangelog() {
 
   // Fetch and display summary
   try {
-    const response = await fetch(`${API_URL}/changelog`);
+    const response = await fetch(`${API_URL}/api/changelog`);
     if (response.ok) {
       const data = await response.json();
       console.log(`Total versions in database: ${data.entries.length}`);

@@ -25,7 +25,7 @@ export interface DocsListItem {
 
 export async function fetchDocs(): Promise<DocsListItem[]> {
   try {
-    const response = await fetch(`${API_URL}/docs`);
+    const response = await fetch(`${API_URL}/api/docs`);
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
@@ -39,7 +39,7 @@ export async function fetchDocs(): Promise<DocsListItem[]> {
 
 export async function fetchDoc(slug: string): Promise<Doc | null> {
   try {
-    const response = await fetch(`${API_URL}/docs/${slug}`);
+    const response = await fetch(`${API_URL}/api/docs/${slug}`);
     if (!response.ok) {
       if (response.status === 404) {
         return null;
@@ -56,7 +56,7 @@ export async function fetchDoc(slug: string): Promise<Doc | null> {
 
 export async function fetchCategories(): Promise<string[]> {
   try {
-    const response = await fetch(`${API_URL}/docs/categories`);
+    const response = await fetch(`${API_URL}/api/docs/categories`);
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }
@@ -70,7 +70,7 @@ export async function fetchCategories(): Promise<string[]> {
 
 export async function fetchDocsByCategory(category: string): Promise<DocsListItem[]> {
   try {
-    const response = await fetch(`${API_URL}/docs/category/${category}`);
+    const response = await fetch(`${API_URL}/api/docs/category/${category}`);
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
     }

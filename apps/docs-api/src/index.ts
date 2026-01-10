@@ -45,10 +45,10 @@ app.post('/sync', async (c) => {
   return c.json({ status: 'ok', message: 'Sync completed' });
 });
 
-// Routes
-app.route('/docs', docs);
-app.route('/roadmap', roadmap);
-app.route('/changelog', changelog);
+// Routes (prefixed with /api to avoid conflicts with landing page routes)
+app.route('/api/docs', docs);
+app.route('/api/roadmap', roadmap);
+app.route('/api/changelog', changelog);
 
 // 404 handler
 app.notFound((c) => {
