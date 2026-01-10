@@ -1,0 +1,439 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { parseChangelog, countSections } from '../utils/changelog-parser';
+
+const entries = await parseChangelog();
+const totalChanges = entries.reduce((sum, e) => sum + countSections(e), 0);
+const latestRelease = entries.find(e => e.version !== 'Unreleased');
+---
+
+<Layout title="Changelog - pctrl">
+  <main>
+    <!-- Header -->
+    <section class="header">
+      <div class="container">
+        <a href="/" class="back-link">&larr; Back to Home</a>
+        <h1>
+          <span class="section-icon">📋</span>
+          Changelog
+        </h1>
+        <p class="subtitle">
+          All notable changes to pctrl are documented here.
+        </p>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+          <div class="stat">
+            <span class="stat-number">{entries.length}</span>
+            <span class="stat-label">Releases</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">{totalChanges}</span>
+            <span class="stat-label">Changes</span>
+          </div>
+          {latestRelease && (
+            <div class="stat">
+              <span class="stat-number">v{latestRelease.version}</span>
+              <span class="stat-label">Latest</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+
+    <!-- Changelog Entries -->
+    <section class="changelog">
+      <div class="container">
+        {entries.map((entry, index) => (
+          <article class={`changelog-entry ${entry.version === 'Unreleased' ? 'unreleased' : ''}`}>
+            <div class="entry-header">
+              <div class="version-info">
+                <h2>
+                  {entry.version === 'Unreleased' ? (
+                    <span class="unreleased-badge">Unreleased</span>
+                  ) : (
+                    <>
+                      <span class="version">v{entry.version}</span>
+                      {entry.date && <span class="date">{entry.date}</span>}
+                    </>
+                  )}
+                </h2>
+              </div>
+              <span class="change-count">{countSections(entry)} changes</span>
+            </div>
+
+            <div class="entry-content">
+              {entry.sections.planned && entry.sections.planned.length > 0 && (
+                <div class="section planned">
+                  <h3><span class="icon">📋</span> Planned</h3>
+                  <ul>
+                    {entry.sections.planned.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.added && entry.sections.added.length > 0 && (
+                <div class="section added">
+                  <h3><span class="icon">✨</span> Added</h3>
+                  <ul>
+                    {entry.sections.added.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.changed && entry.sections.changed.length > 0 && (
+                <div class="section changed">
+                  <h3><span class="icon">🔄</span> Changed</h3>
+                  <ul>
+                    {entry.sections.changed.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.deprecated && entry.sections.deprecated.length > 0 && (
+                <div class="section deprecated">
+                  <h3><span class="icon">⚠️</span> Deprecated</h3>
+                  <ul>
+                    {entry.sections.deprecated.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.removed && entry.sections.removed.length > 0 && (
+                <div class="section removed">
+                  <h3><span class="icon">🗑️</span> Removed</h3>
+                  <ul>
+                    {entry.sections.removed.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.fixed && entry.sections.fixed.length > 0 && (
+                <div class="section fixed">
+                  <h3><span class="icon">🐛</span> Fixed</h3>
+                  <ul>
+                    {entry.sections.fixed.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {entry.sections.security && entry.sections.security.length > 0 && (
+                <div class="section security">
+                  <h3><span class="icon">🔐</span> Security</h3>
+                  <ul>
+                    {entry.sections.security.map(item => (
+                      <li>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>
+          This changelog follows <a href="https://keepachangelog.com/en/1.0.0/" target="_blank">Keep a Changelog</a>
+          and <a href="https://semver.org/spec/v2.0.0.html" target="_blank">Semantic Versioning</a>.
+        </p>
+        <p class="made-with">
+          <a href="/">pctrl</a> - Mission Control for Self-Hosters & Indie Devs
+        </p>
+      </div>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  :root {
+    --primary: #667eea;
+    --secondary: #764ba2;
+    --accent: #00d4ff;
+    --success: #00c853;
+    --warning: #ffd600;
+    --dark: #0a0a0f;
+    --darker: #050508;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+  }
+
+  main {
+    width: 100%;
+    background: var(--darker);
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* Header */
+  .header {
+    padding: 4rem 0 3rem;
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, var(--darker) 70%);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .back-link {
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s ease;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .header h1 {
+    color: white;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .section-icon {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Stats Bar */
+  .stats-bar {
+    display: flex;
+    gap: 3rem;
+    padding: 1.5rem 2rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Changelog */
+  .changelog {
+    padding: 3rem 0;
+  }
+
+  .changelog-entry {
+    margin-bottom: 2rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+  }
+
+  .changelog-entry:hover {
+    border-color: var(--primary);
+  }
+
+  .changelog-entry.unreleased {
+    border-color: rgba(255, 214, 0, 0.3);
+  }
+
+  .changelog-entry.unreleased:hover {
+    border-color: var(--warning);
+  }
+
+  .entry-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .version-info h2 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .version {
+    font-size: 1.5rem;
+    color: white;
+  }
+
+  .date {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+  }
+
+  .unreleased-badge {
+    background: rgba(255, 214, 0, 0.2);
+    color: var(--warning);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 1rem;
+  }
+
+  .change-count {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+  }
+
+  .entry-content {
+    padding: 1.5rem 2rem;
+  }
+
+  .section {
+    margin-bottom: 1.5rem;
+  }
+
+  .section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section h3 {
+    color: white;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section .icon {
+    font-size: 1.1rem;
+  }
+
+  .section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .section li {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.4rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .section li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Section colors */
+  .section.added h3 { color: var(--success); }
+  .section.added li::before { color: var(--success); }
+
+  .section.changed h3 { color: var(--accent); }
+  .section.changed li::before { color: var(--accent); }
+
+  .section.deprecated h3 { color: var(--warning); }
+  .section.deprecated li::before { color: var(--warning); }
+
+  .section.removed h3 { color: #ff6b6b; }
+  .section.removed li::before { color: #ff6b6b; }
+
+  .section.fixed h3 { color: #a78bfa; }
+  .section.fixed li::before { color: #a78bfa; }
+
+  .section.security h3 { color: #f472b6; }
+  .section.security li::before { color: #f472b6; }
+
+  .section.planned h3 { color: rgba(255, 255, 255, 0.5); }
+  .section.planned li::before { color: rgba(255, 255, 255, 0.3); }
+  .section.planned li { color: rgba(255, 255, 255, 0.5); }
+
+  /* Footer */
+  footer {
+    background: var(--dark);
+    border-top: 1px solid var(--glass-border);
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  footer p {
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0.5rem 0;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  .made-with {
+    margin-top: 1rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .stats-bar {
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+    }
+
+    .entry-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+    }
+  }
+</style>
