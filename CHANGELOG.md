@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `migrations.rs` module for managing schema changes
   - Migration v1→v2: Added `exit_code` and `last_output` columns to scripts table
 
+- **`pctrl migrate` Command**
+  - Interactive migration from legacy to v6 structure
+  - SSH Connections → Servers (with SSH reference)
+  - Docker/Coolify/Git → Project Resources linking
+  - `--auto` flag for non-interactive migration
+  - `--cleanup` flag (planned) for removing legacy data
+
 ### Deprecated
 - **Legacy Commands** now show deprecation warnings:
   - `pctrl ssh` → use `pctrl server` instead

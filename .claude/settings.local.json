@@ -9,7 +9,8 @@
       "Bash(cmd /c \"type E:\\\\pctrl\\\\ARCHITECTURE.md\")",
       "Bash(wc:*)",
       "Bash(cargo run:*)",
-      "Bash(./deploy.sh:*)"
+      "Bash(./deploy.sh:*)",
+      "Bash(cargo build:*)"
     ]
   }
 }

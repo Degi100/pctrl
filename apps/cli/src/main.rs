@@ -110,6 +110,20 @@ pub enum Commands {
         #[command(subcommand)]
         command: GitCommands,
     },
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // MIGRATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    /// Migrate legacy data to v6 project-centric structure
+    Migrate {
+        /// Automatic migration without prompts
+        #[arg(long)]
+        auto: bool,
+
+        /// Remove legacy data after migration
+        #[arg(long)]
+        cleanup: bool,
+    },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

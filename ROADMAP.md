@@ -76,7 +76,7 @@
 
 ### Migration Tasks
 - ✅ Add deprecation warnings to legacy commands
-- 📋 Create `pctrl migrate` command for automatic data migration
+- ✅ Create `pctrl migrate` command for automatic data migration
 - 📋 Update TUI to use v6 entities (Projects, Servers, Domains, etc.)
 - 📋 Update Tauri desktop with v6 commands
 - 📋 Remove legacy code paths

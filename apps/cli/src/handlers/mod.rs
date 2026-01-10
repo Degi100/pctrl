@@ -4,6 +4,7 @@
 
 mod database;
 mod domain;
+mod migrate;
 mod project;
 mod script;
 mod server;
@@ -34,5 +35,7 @@ pub async fn handle_command(
         Commands::Docker { command } => legacy::docker::handle(command, &config, &db).await,
         Commands::Coolify { command } => legacy::coolify::handle(command, &config, &db).await,
         Commands::Git { command } => legacy::git::handle(command, &config, &db).await,
+        // Migration
+        Commands::Migrate { auto, cleanup } => migrate::handle(auto, cleanup, &config, &db).await,
     }
 }
