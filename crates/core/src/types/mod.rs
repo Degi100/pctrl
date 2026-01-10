@@ -4,6 +4,7 @@
 
 mod config;
 mod container;
+mod credential;
 mod database;
 mod domain;
 mod error;
@@ -16,6 +17,7 @@ mod server;
 // Re-export all types
 pub use config::{Config, Mode};
 pub use container::{Container, ContainerStatus};
+pub use credential::{Credential, CredentialData, CredentialType};
 pub use database::{DatabaseCredentials, DatabaseType};
 pub use domain::{Domain, DomainType};
 pub use error::{Error, Result};

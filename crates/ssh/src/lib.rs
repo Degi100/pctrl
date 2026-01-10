@@ -66,6 +66,46 @@ impl SshManager {
                         pctrl_core::Error::Ssh(format!("Public key authentication failed: {}", e))
                     })?;
             }
+            AuthMethod::Key { path, passphrase } => {
+                session
+                    .userauth_pubkey_file(
+                        &conn.username,
+                        None,
+                        Path::new(path),
+                        passphrase.as_deref(),
+                    )
+                    .map_err(|e| {
+                        pctrl_core::Error::Ssh(format!("Key authentication failed: {}", e))
+                    })?;
+            }
+            AuthMethod::Agent => {
+                let mut agent = session.agent().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to get SSH agent: {}", e))
+                })?;
+
+                agent.connect().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to connect to SSH agent: {}", e))
+                })?;
+
+                agent.list_identities().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to list agent identities: {}", e))
+                })?;
+
+                // Try each identity until one works
+                let mut authenticated = false;
+                for identity in agent.identities().unwrap_or_default() {
+                    if agent.userauth(&conn.username, &identity).is_ok() {
+                        authenticated = true;
+                        break;
+                    }
+                }
+
+                if !authenticated {
+                    return Err(pctrl_core::Error::Ssh(
+                        "SSH agent authentication failed: no valid identity found".to_string(),
+                    ));
+                }
+            }
         }
 
         Ok(session)
@@ -114,6 +154,45 @@ impl SshManager {
                     .map_err(|e| {
                         pctrl_core::Error::Ssh(format!("Public key authentication failed: {}", e))
                     })?;
+            }
+            AuthMethod::Key { path, passphrase } => {
+                session
+                    .userauth_pubkey_file(
+                        &conn.username,
+                        None,
+                        Path::new(path),
+                        passphrase.as_deref(),
+                    )
+                    .map_err(|e| {
+                        pctrl_core::Error::Ssh(format!("Key authentication failed: {}", e))
+                    })?;
+            }
+            AuthMethod::Agent => {
+                let mut agent = session.agent().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to get SSH agent: {}", e))
+                })?;
+
+                agent.connect().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to connect to SSH agent: {}", e))
+                })?;
+
+                agent.list_identities().map_err(|e| {
+                    pctrl_core::Error::Ssh(format!("Failed to list agent identities: {}", e))
+                })?;
+
+                let mut authenticated = false;
+                for identity in agent.identities().unwrap_or_default() {
+                    if agent.userauth(&conn.username, &identity).is_ok() {
+                        authenticated = true;
+                        break;
+                    }
+                }
+
+                if !authenticated {
+                    return Err(pctrl_core::Error::Ssh(
+                        "SSH agent authentication failed".to_string(),
+                    ));
+                }
             }
         }
 

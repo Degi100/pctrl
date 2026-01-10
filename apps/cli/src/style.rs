@@ -153,3 +153,42 @@ pub fn format_path(path: &str, max_len: usize) -> String {
         format!("...{}", &path[path.len() - max_len + 3..])
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Inline formatting helpers (return strings, don't print)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Return bold text
+pub fn bold(text: &str) -> String {
+    format!("{}{}{}", BOLD, text, RESET)
+}
+
+/// Return dimmed text
+pub fn dim(text: &str) -> String {
+    format!("{}{}{}", DIM, text, RESET)
+}
+
+/// Return green (success) text
+pub fn success_text(text: &str) -> String {
+    format!("{}{}{}", GREEN, text, RESET)
+}
+
+/// Return red (error) text
+pub fn error_text(text: &str) -> String {
+    format!("{}{}{}", RED, text, RESET)
+}
+
+/// Return yellow (warning) text
+pub fn warning_text(text: &str) -> String {
+    format!("{}{}{}", YELLOW, text, RESET)
+}
+
+/// Return cyan (info) text
+pub fn info_text(text: &str) -> String {
+    format!("{}{}{}", CYAN, text, RESET)
+}
+
+/// Return a section header
+pub fn header(text: &str) -> String {
+    format!("{}{}{}{}", BOLD, WHITE, text, RESET)
+}

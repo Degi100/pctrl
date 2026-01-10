@@ -4,6 +4,7 @@
 
 mod config;
 mod coolify;
+mod credential;
 mod database_creds;
 mod docker;
 mod domain;

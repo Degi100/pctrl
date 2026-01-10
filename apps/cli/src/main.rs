@@ -83,6 +83,13 @@ pub enum Commands {
         #[command(subcommand)]
         command: ScriptCommands,
     },
+
+    /// Credential management (SSH keys, API tokens, etc.)
+    #[command(alias = "cred")]
+    Credential {
+        #[command(subcommand)]
+        command: CredentialCommands,
+    },
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -158,9 +165,9 @@ pub enum ServerCommands {
         /// Provider (e.g., hetzner, aws, digitalocean)
         #[arg(short, long)]
         provider: Option<String>,
-        /// SSH connection ID to use
+        /// Credential name/ID for SSH access
         #[arg(short, long)]
-        ssh: Option<String>,
+        credential: Option<String>,
         /// Location (e.g., "Falkenstein, DE")
         #[arg(short, long)]
         location: Option<String>,
@@ -172,6 +179,18 @@ pub enum ServerCommands {
     },
     /// Remove a server
     Remove {
+        /// Server name or ID
+        name: String,
+    },
+    /// Execute a command on the server via SSH
+    Exec {
+        /// Server name or ID
+        name: String,
+        /// Command to execute
+        command: String,
+    },
+    /// Check server status (connectivity, uptime)
+    Status {
         /// Server name or ID
         name: String,
     },
@@ -336,6 +355,52 @@ pub enum ScriptCommands {
     },
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREDENTIAL COMMANDS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[derive(Subcommand)]
+pub enum CredentialCommands {
+    /// List all credentials
+    List,
+    /// Add a new credential
+    Add {
+        /// Credential name (e.g., "My SSH Key", "Coolify API")
+        name: String,
+        /// Credential type: ssh, api, basic, oauth
+        #[arg(short = 't', long = "type")]
+        cred_type: String,
+        /// Username (for SSH and basic auth)
+        #[arg(short, long)]
+        user: Option<String>,
+        /// Port (for SSH, default 22)
+        #[arg(short, long)]
+        port: Option<u16>,
+        /// SSH key path (for SSH credentials)
+        #[arg(short, long)]
+        key: Option<String>,
+        /// API token (for API/OAuth credentials)
+        #[arg(long)]
+        token: Option<String>,
+        /// Password (for basic auth or SSH passphrase)
+        #[arg(short = 'P', long)]
+        password: Option<String>,
+        /// URL (for API/OAuth/basic auth)
+        #[arg(long)]
+        url: Option<String>,
+    },
+    /// Show credential details
+    Show {
+        /// Credential name
+        name: String,
+    },
+    /// Remove a credential
+    Remove {
+        /// Credential name
+        name: String,
+    },
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
@@ -379,6 +444,7 @@ async fn main() -> anyhow::Result<()> {
                 let domains = db.list_domains().await.unwrap_or_default();
                 let databases = db.list_database_credentials().await.unwrap_or_default();
                 let scripts = db.list_scripts().await.unwrap_or_default();
+                let credentials = db.list_credentials().await.unwrap_or_default();
 
                 println!("  {}Status{}", style::BOLD, style::RESET);
                 style::divider();
@@ -387,6 +453,7 @@ async fn main() -> anyhow::Result<()> {
                 style::kv_count("Domains", domains.len());
                 style::kv_count("Databases", databases.len());
                 style::kv_count("Scripts", scripts.len());
+                style::kv_count("Credentials", credentials.len());
                 style::divider();
                 println!(
                     "  {}Database:{} {}",

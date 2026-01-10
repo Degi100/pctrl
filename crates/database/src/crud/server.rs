@@ -12,7 +12,7 @@ impl Database {
             .map(|s| serde_json::to_string(s).unwrap_or_default());
 
         sqlx::query(
-            "INSERT OR REPLACE INTO servers (id, name, host, server_type, provider, ssh_connection_id, location, specs, notes)
+            "INSERT OR REPLACE INTO servers (id, name, host, server_type, provider, credential_id, location, specs, notes)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&server.id)
@@ -20,7 +20,7 @@ impl Database {
         .bind(&server.host)
         .bind(server.server_type.to_string())
         .bind(&server.provider)
-        .bind(&server.ssh_connection_id)
+        .bind(&server.credential_id)
         .bind(&server.location)
         .bind(&specs)
         .bind(&server.notes)
@@ -44,7 +44,7 @@ impl Database {
             Option<String>,
             Option<String>,
         )> = sqlx::query_as(
-            "SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers WHERE id = ?",
+            "SELECT id, name, host, server_type, provider, credential_id, location, specs, notes FROM servers WHERE id = ?",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -67,7 +67,7 @@ impl Database {
             Option<String>,
             Option<String>,
         )> = sqlx::query_as(
-            "SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers WHERE LOWER(name) = LOWER(?)",
+            "SELECT id, name, host, server_type, provider, credential_id, location, specs, notes FROM servers WHERE LOWER(name) = LOWER(?)",
         )
         .bind(name)
         .fetch_optional(&self.pool)
@@ -90,7 +90,7 @@ impl Database {
             Option<String>,
             Option<String>,
         )> = sqlx::query_as(
-            "SELECT id, name, host, server_type, provider, ssh_connection_id, location, specs, notes FROM servers ORDER BY name",
+            "SELECT id, name, host, server_type, provider, credential_id, location, specs, notes FROM servers ORDER BY name",
         )
         .fetch_all(&self.pool)
         .await
@@ -135,8 +135,7 @@ impl Database {
             Option<String>,
         ),
     ) -> pctrl_core::Server {
-        let (id, name, host, server_type, provider, ssh_connection_id, location, specs, notes) =
-            row;
+        let (id, name, host, server_type, provider, credential_id, location, specs, notes) = row;
         let server_type = server_type.parse().unwrap_or_default();
         let specs = specs.and_then(|s| serde_json::from_str(&s).ok());
 
@@ -146,7 +145,7 @@ impl Database {
             host,
             server_type,
             provider,
-            ssh_connection_id,
+            credential_id,
             location,
             specs,
             notes,

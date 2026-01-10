@@ -16,7 +16,16 @@ pub struct SshConnection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuthMethod {
     Password,
-    PublicKey { key_path: String },
+    PublicKey {
+        key_path: String,
+    },
+    /// SSH key with optional passphrase
+    Key {
+        path: String,
+        passphrase: Option<String>,
+    },
+    /// SSH Agent (uses system SSH agent for authentication)
+    Agent,
 }
 
 /// Docker host configuration

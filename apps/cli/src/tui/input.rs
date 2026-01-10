@@ -159,7 +159,7 @@ async fn save_new_entry(app: &mut App) -> anyhow::Result<()> {
                 } else {
                     Some(app.input_form.provider.clone())
                 },
-                ssh_connection_id: None,
+                credential_id: None,
                 location: None,
                 specs: None,
                 notes: None,

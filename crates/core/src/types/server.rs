@@ -11,7 +11,8 @@ pub struct Server {
     pub host: String,
     pub server_type: ServerType,
     pub provider: Option<String>,
-    pub ssh_connection_id: Option<String>,
+    /// Reference to a Credential for SSH access
+    pub credential_id: Option<String>,
     pub location: Option<String>,
     pub specs: Option<ServerSpecs>,
     pub notes: Option<String>,

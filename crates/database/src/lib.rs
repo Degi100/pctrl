@@ -248,6 +248,16 @@ CREATE TABLE IF NOT EXISTS roadmap (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- v6: CREDENTIALS (Secure storage for auth)
+CREATE TABLE IF NOT EXISTS credentials (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    credential_type TEXT NOT NULL,
+    data TEXT NOT NULL,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- v6: PROJECTS (Core Entity)
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
@@ -269,12 +279,12 @@ CREATE TABLE IF NOT EXISTS servers (
     host TEXT NOT NULL,
     server_type TEXT DEFAULT 'vps',
     provider TEXT,
-    ssh_connection_id TEXT,
+    credential_id TEXT,
     location TEXT,
     specs TEXT,
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (ssh_connection_id) REFERENCES ssh_connections(id)
+    FOREIGN KEY (credential_id) REFERENCES credentials(id)
 );
 
 -- v6: DOMAINS
