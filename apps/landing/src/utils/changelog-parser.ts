@@ -26,22 +26,27 @@ interface ChangelogResponse {
   entries: ChangelogEntry[];
 }
 
+export interface ChangelogResult {
+  entries: ChangelogEntry[];
+  source: 'api' | 'fallback';
+}
+
 /**
  * Fetch changelog data from the API
  */
-export async function parseChangelog(): Promise<ChangelogEntry[]> {
+export async function parseChangelog(): Promise<ChangelogResult> {
   try {
     const response = await fetch(`${API_URL}/changelog`);
     if (!response.ok) {
       console.warn(`Changelog API error: ${response.status}, using fallback`);
-      return getFallbackChangelog();
+      return { entries: getFallbackChangelog(), source: 'fallback' };
     }
 
     const data: ChangelogResponse = await response.json();
-    return data.entries;
+    return { entries: data.entries, source: 'api' };
   } catch (error) {
     console.error('Failed to fetch changelog:', error);
-    return getFallbackChangelog();
+    return { entries: getFallbackChangelog(), source: 'fallback' };
   }
 }
 

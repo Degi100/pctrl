@@ -2,9 +2,10 @@
 import Layout from '../layouts/Layout.astro';
 import { parseChangelog, countSections } from '../utils/changelog-parser';
 
-const entries = await parseChangelog();
+const { entries, source } = await parseChangelog();
 const totalChanges = entries.reduce((sum, e) => sum + countSections(e), 0);
 const latestRelease = entries.find(e => e.version !== 'Unreleased');
+const isDev = import.meta.env.DEV;
 ---
 
 <Layout title="Changelog - pctrl">
@@ -157,6 +158,13 @@ const latestRelease = entries.find(e => e.version !== 'Unreleased');
         </p>
       </div>
     </footer>
+
+    {/* Dev indicator */}
+    {isDev && (
+      <div class={`dev-indicator ${source}`}>
+        Data: {source === 'api' ? 'MongoDB' : 'Fallback'}
+      </div>
+    )}
   </main>
 </Layout>
 
@@ -435,5 +443,30 @@ const latestRelease = entries.find(e => e.version !== 'Unreleased');
     .header h1 {
       font-size: 2rem;
     }
+  }
+
+  /* Dev indicator */
+  .dev-indicator {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'Fira Code', monospace;
+    z-index: 9999;
+  }
+
+  .dev-indicator.api {
+    background: rgba(0, 200, 83, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .dev-indicator.fallback {
+    background: rgba(255, 214, 0, 0.2);
+    color: var(--warning);
+    border: 1px solid var(--warning);
   }
 </style>

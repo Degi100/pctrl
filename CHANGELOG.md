@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--auto` flag for non-interactive migration
   - `--cleanup` flag (planned) for removing legacy data
 
+- **Landing Page: Changelog**
+  - New `/changelog` page displaying all releases
+  - Fetches data from docs-api with fallback
+  - Color-coded sections (Added, Changed, Fixed, etc.)
+  - Stats overview (releases count, changes, latest version)
+
 ### Deprecated
 - **Legacy Commands** now show deprecation warnings:
   - `pctrl ssh` → use `pctrl server` instead
