@@ -6,6 +6,7 @@
 #![allow(clippy::type_complexity)]
 
 mod crud;
+mod migrations;
 
 use aes_gcm::{
     aead::{Aead, KeyInit},
@@ -58,6 +59,10 @@ impl Database {
             encryption_salt: salt,
         };
         db.init_schema().await?;
+
+        // Run any pending migrations
+        migrations::run_migrations(&db.pool).await?;
+
         Ok(db)
     }
 
