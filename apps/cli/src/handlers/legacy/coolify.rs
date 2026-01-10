@@ -1,5 +1,6 @@
-//! Coolify command handler
+//! Coolify command handler (Legacy - deprecated)
 
+use crate::style;
 use crate::CoolifyCommands;
 use pctrl_coolify::CoolifyManager;
 use pctrl_core::{Config, CoolifyInstance};
@@ -10,6 +11,8 @@ pub async fn handle(
     config: &Config,
     db: &Database,
 ) -> anyhow::Result<()> {
+    style::deprecation_warning("coolify", "project deploy");
+
     // Initialize manager with config data
     let mut coolify_manager = CoolifyManager::new();
     for instance in &config.coolify_instances {

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Database Schema Migrations**
+  - Automatic schema versioning in metadata table
+  - Auto-migration on database startup
+  - `migrations.rs` module for managing schema changes
+  - Migration v1→v2: Added `exit_code` and `last_output` columns to scripts table
+
+### Deprecated
+- **Legacy Commands** now show deprecation warnings:
+  - `pctrl ssh` → use `pctrl server` instead
+  - `pctrl docker` → use `pctrl server` instead
+  - `pctrl coolify` → use `pctrl project deploy` instead
+  - `pctrl git` → use `pctrl project` instead
+  - All legacy commands will be removed in v0.4.0
+
 ### Planned
 - TUI detail views and interactive actions
 - Desktop GUI functionality

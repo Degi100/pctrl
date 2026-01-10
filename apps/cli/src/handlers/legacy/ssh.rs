@@ -1,11 +1,14 @@
-//! SSH command handler
+//! SSH command handler (Legacy - deprecated)
 
+use crate::style;
 use crate::SshCommands;
 use pctrl_core::{AuthMethod, Config, SshConnection};
 use pctrl_database::Database;
 use pctrl_ssh::SshManager;
 
 pub async fn handle(command: SshCommands, config: &Config, db: &Database) -> anyhow::Result<()> {
+    style::deprecation_warning("ssh", "server");
+
     // Initialize manager with config data
     let mut ssh_manager = SshManager::new();
     for conn in &config.ssh_connections {

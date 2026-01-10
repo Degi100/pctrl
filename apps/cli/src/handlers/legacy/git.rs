@@ -1,11 +1,14 @@
-//! Git command handler
+//! Git command handler (Legacy - deprecated)
 
+use crate::style;
 use crate::GitCommands;
 use pctrl_core::{Config, GitRepo};
 use pctrl_database::Database;
 use pctrl_git::GitManager;
 
 pub async fn handle(command: GitCommands, config: &Config, db: &Database) -> anyhow::Result<()> {
+    style::deprecation_warning("git", "project");
+
     // Initialize manager with config data
     let mut git_manager = GitManager::new();
     for repo in &config.git_repos {

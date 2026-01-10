@@ -1,11 +1,14 @@
-//! Docker command handler
+//! Docker command handler (Legacy - deprecated)
 
+use crate::style;
 use crate::DockerCommands;
 use pctrl_core::{Config, DockerHost};
 use pctrl_database::Database;
 use pctrl_docker::DockerManager;
 
 pub async fn handle(command: DockerCommands, config: &Config, db: &Database) -> anyhow::Result<()> {
+    style::deprecation_warning("docker", "server");
+
     // Initialize manager with config data
     let mut docker_manager = DockerManager::new();
     for host in &config.docker_hosts {

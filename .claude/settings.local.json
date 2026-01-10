@@ -8,7 +8,8 @@
       "Bash(cmd /c \"type E:\\\\pctrl\\\\Cargo.toml\")",
       "Bash(cmd /c \"type E:\\\\pctrl\\\\ARCHITECTURE.md\")",
       "Bash(wc:*)",
-      "Bash(cargo run:*)"
+      "Bash(cargo run:*)",
+      "Bash(./deploy.sh:*)"
     ]
   }
 }
