@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(pctrl git add \"pctrl\" -p \"E:\\\\pctrl\")"
+      "Bash(pctrl git add \"pctrl\" -p \"E:\\\\pctrl\")",
+      "Bash(ls:*)",
+      "Bash(cmd /c \"type E:\\\\pctrl\\\\README.md\")",
+      "Bash(cmd /c \"type E:\\\\pctrl\\\\Cargo.toml\")",
+      "Bash(cmd /c \"type E:\\\\pctrl\\\\ARCHITECTURE.md\")",
+      "Bash(wc:*)"
     ]
   }
 }

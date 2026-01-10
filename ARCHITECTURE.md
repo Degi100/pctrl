@@ -179,12 +179,81 @@ pctrl script list
 pctrl script add <name> -t deploy|backup|health-check
 ```
 
-### Legacy Commands (Infrastructure)
+### Legacy Commands (Deprecated)
+
+> **Note**: Legacy commands will be removed in a future version. Use v6 project-centric commands instead.
+
 ```bash
 pctrl ssh list|add|remove|connect
 pctrl docker list|start|stop|logs
 pctrl coolify list|deploy
 pctrl git status|release
+```
+
+## Legacy Migration
+
+### Overview
+
+The project evolved from standalone resource management (Legacy) to a project-centric architecture (v6). Legacy commands are deprecated and will be removed.
+
+### Migration Path
+
+| Legacy Command | v6 Replacement | Notes |
+|----------------|----------------|-------|
+| `pctrl ssh` | `pctrl server` | SSH is now a property of Server (`--ssh` flag) |
+| `pctrl docker` | `pctrl server` + Container | Containers linked to Servers via project |
+| `pctrl coolify` | Deployment layer | Integrated into project deployment workflow |
+| `pctrl git` | `pctrl project` | Git repos linked directly to projects |
+
+### Architecture Comparison
+
+**Legacy (Standalone)**:
+```
+SSH Connection ──┐
+Docker Host ─────┼── No relationship
+Coolify Instance ┤
+Git Repo ────────┘
+```
+
+**v6 (Project-Centric)**:
+```
+           PROJECT
+              │
+    ┌─────────┼─────────┐
+    ▼         ▼         ▼
+  Server    Domain   Database
+    │
+    ├── SSH (integrated)
+    ├── Containers (linked)
+    └── Scripts (execute here)
+```
+
+### Migration Strategy
+
+1. **Phase 1** (Current): Both systems coexist
+   - Legacy commands still work
+   - v6 commands are primary
+   - Warning messages encourage migration
+
+2. **Phase 2**: Deprecation warnings
+   - Legacy commands show deprecation notice
+   - Migration helper: `pctrl migrate`
+   - Auto-convert legacy data to v6 structure
+
+3. **Phase 3**: Removal
+   - Legacy commands removed
+   - Legacy database tables archived
+   - Only v6 architecture remains
+
+### Data Migration
+
+Legacy entities map to v6 as follows:
+
+```
+ssh_connections  →  servers.ssh_connection_id (reference)
+docker_hosts     →  servers (type: "docker-host") + containers
+coolify_instances → project deployment config
+git_repos        →  project_resources (type: "git")
 ```
 
 ## Data Flow
